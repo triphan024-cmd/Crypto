@@ -85,7 +85,7 @@
         const CSV_URL = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/export?format=csv&gid=${GID}`; 
         
         // THAY THẾ LINK WEB APP CỦA GOOGLE APPS SCRIPT VÀO ĐÂY SAU KHI DEPLOY:
-        const GAS_URL = "DÁN_URL_CỦA_BẠN_VÀO_ĐÂY";
+        const GAS_URL = "https://script.google.com/macros/s/AKfycbx7fLVyGnfUGswUkWuUbhZ9UOrcivCfs7FY-8X-bg1MoNU5hCuouHJEEn7Fpm-nM2fjbQ/exec";
 
         // CẤU HÌNH VỐN ĐẦU TƯ CHO TỪNG COIN (Investment)
         const INVESTMENTS = {
@@ -360,7 +360,7 @@
                                     method: 'POST',
                                     mode: 'no-cors',
                                     headers: {
-                                        'Content-Type': 'application/json',
+                                        'Content-Type': 'text/plain',
                                     },
                                     body: JSON.stringify({
                                         id: detail['ID'],
