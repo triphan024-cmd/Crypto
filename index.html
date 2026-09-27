@@ -3,36 +3,33 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Crypto Dashboard</title>
+    <title>Crypto Trading Dashboard</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <!-- Add FontAwesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
-<body class="bg-gray-100 p-8">
-    <div class="max-w-6xl mx-auto">
-        <h1 class="text-3xl font-bold text-gray-800 mb-6">Crypto Dashboard</h1>
-        
-        <div class="bg-white rounded-lg shadow-md p-6 mb-6">
-            <h2 class="text-xl font-semibold mb-4 text-gray-700">Hướng dẫn kết nối dữ liệu</h2>
-            <p class="mb-2 text-gray-600">File Google Sheet của bạn hiện đang ở chế độ <strong>Private</strong>. Để dashboard này có thể tự động lấy dữ liệu từ sheet "Dashboard", bạn cần làm các bước sau:</p>
-            <ol class="list-decimal pl-5 mb-4 text-gray-600 space-y-1">
-                <li>Mở Google Sheet của bạn.</li>
-                <li>Vào <strong>Tệp (File)</strong> > <strong>Chia sẻ (Share)</strong> > <strong>Công bố lên web (Publish to web)</strong>.</li>
-                <li>Trong hộp thoại hiện ra, ở phần Liên kết, chọn sheet <strong>Dashboard</strong> và định dạng <strong>Giá trị được phân tách bằng dấu phẩy (.csv)</strong>.</li>
-                <li>Nhấn <strong>Công bố (Publish)</strong>.</li>
-                <li>Copy đường link được tạo ra và dán vào biến <code>CSV_URL</code> trong mã nguồn của file <code>index.html</code> này.</li>
-            </ol>
+<body class="bg-slate-50 p-4 md:p-8 min-h-screen">
+    <div class="max-w-7xl mx-auto">
+        <div class="flex items-center justify-between mb-8">
+            <h1 class="text-3xl font-bold text-slate-800 flex items-center gap-3">
+                <i class="fa-solid fa-chart-line text-blue-600"></i>
+                Crypto Trading Dashboard
+            </h1>
+            <div class="text-sm text-slate-500 bg-white px-4 py-2 rounded-full shadow-sm">
+                <i class="fa-solid fa-circle-check text-green-500 mr-1"></i> Live Data Sync
+            </div>
         </div>
-
-        <div class="bg-white rounded-lg shadow-md overflow-hidden">
+        
+        <div class="bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden">
             <div class="overflow-x-auto">
-                <table class="w-full text-left border-collapse" id="dashboardTable">
+                <table class="w-full text-left border-collapse whitespace-nowrap" id="dashboardTable">
                     <thead>
-                        <tr class="bg-gray-50 border-b border-gray-200 text-gray-600" id="tableHeader">
-                            <!-- Headers will be injected here -->
-                            <th class="p-4">Đang tải dữ liệu...</th>
+                        <tr class="bg-slate-800 text-slate-100 uppercase text-xs font-semibold tracking-wider" id="tableHeader">
+                            <th class="p-4 rounded-tl-lg">Đang tải dữ liệu...</th>
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-gray-200" id="tableBody">
+                    <tbody class="divide-y divide-slate-100 text-sm" id="tableBody">
                         <!-- Data rows will be injected here -->
                     </tbody>
                 </table>
@@ -41,27 +38,55 @@
     </div>
 
     <script>
-        // --- CẤU HÌNH ---
-        // Thay thế link bên dưới bằng link CSV lấy từ "Publish to web" của Google Sheet
-        const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQ.../pub?gid=1009513310&single=true&output=csv'; 
+        // --- CẤU HÌNH CSV URL ---
+        // Sử dụng link export format=csv thay vì link edit
+        const SPREADSHEET_ID = '1wyXOB7wktDBG1BeNn_YEiHL4d63R1lKcAoHxcP2hJF8';
+        const GID = '0';
+        const CSV_URL = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/export?format=csv&gid=${GID}`; 
         
-        // Cố gắng tải dữ liệu (sẽ bị lỗi CORS hoặc 404 nếu URL chưa chính xác)
-        if (CSV_URL.includes("2PACX")) {
-            Papa.parse(CSV_URL, {
-                download: true,
-                header: true,
-                complete: function(results) {
-                    const data = results.data;
-                    if(data && data.length > 0) {
-                        renderTable(data);
-                    } else {
-                        showError("Không có dữ liệu hoặc lỗi parse.");
-                    }
-                },
-                error: function(err) {
-                    showError("Lỗi khi tải dữ liệu: " + err.message + ". Vui lòng kiểm tra lại link CSV đã Publish.");
+        // Tải và Parse dữ liệu
+        Papa.parse(CSV_URL, {
+            download: true,
+            header: true,
+            complete: function(results) {
+                const data = results.data;
+                if(data && data.length > 0) {
+                    renderTable(data);
+                } else {
+                    showError("Không có dữ liệu hoặc lỗi parse.");
                 }
-            });
+            },
+            error: function(err) {
+                showError("Lỗi khi tải dữ liệu: " + err.message);
+            }
+        });
+
+        // Hàm render màu sắc cho Status
+        function getStatusBadge(statusText) {
+            if (!statusText) return '-';
+            if (statusText.includes('Filled')) {
+                return `<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-200">
+                            ${statusText}
+                        </span>`;
+            } else if (statusText.includes('Pending')) {
+                return `<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800 border border-amber-200">
+                            ${statusText}
+                        </span>`;
+            }
+            return `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-800">
+                        ${statusText}
+                    </span>`;
+        }
+        
+        // Hàm render Logo Coin
+        function getCoinBadge(coin) {
+            if (!coin) return '-';
+            // Simple hash to generate a somewhat consistent color for coins
+            const colors = ['bg-blue-100 text-blue-700', 'bg-indigo-100 text-indigo-700', 'bg-purple-100 text-purple-700', 'bg-pink-100 text-pink-700', 'bg-orange-100 text-orange-700'];
+            const colorIndex = coin.length % colors.length;
+            const colorClass = colors[colorIndex];
+            
+            return `<span class="font-bold ${colorClass} px-2 py-1 rounded-md text-xs border border-opacity-20 border-current shadow-sm">${coin}</span>`;
         }
 
         function renderTable(data) {
@@ -71,13 +96,16 @@
             headerRow.innerHTML = '';
             tbody.innerHTML = '';
 
-            if (data.length === 0) return;
+            // Clean headers (remove any empty strings)
+            let rawHeaders = Object.keys(data[0]);
+            const headers = rawHeaders.filter(h => h.trim() !== '');
+
+            if (headers.length === 0) return;
 
             // Render headers
-            const headers = Object.keys(data[0]);
             headers.forEach(headerText => {
                 const th = document.createElement('th');
-                th.className = 'p-4 font-semibold';
+                th.className = 'p-4';
                 th.textContent = headerText;
                 headerRow.appendChild(th);
             });
@@ -85,15 +113,30 @@
             // Render rows
             data.forEach(row => {
                 // Skip completely empty rows
-                if (Object.values(row).every(val => !val)) return;
+                if (headers.every(h => !row[h] || row[h].trim() === '')) return;
 
                 const tr = document.createElement('tr');
-                tr.className = 'hover:bg-gray-50';
+                tr.className = 'hover:bg-blue-50 transition-colors duration-150 group';
                 
                 headers.forEach(header => {
                     const td = document.createElement('td');
-                    td.className = 'p-4 text-gray-700';
-                    td.textContent = row[header] || '-';
+                    td.className = 'p-4 text-slate-700 align-middle group-hover:text-slate-900';
+                    
+                    const value = row[header] ? row[header].trim() : '-';
+                    
+                    // Custom formatting based on column name
+                    if (header.toUpperCase() === 'STATUS') {
+                        td.innerHTML = getStatusBadge(value);
+                    } else if (header.toUpperCase() === 'COIN') {
+                        td.innerHTML = getCoinBadge(value);
+                    } else if (header.toUpperCase() === 'AMOUNT' || header.toUpperCase().includes('TARGET')) {
+                        td.innerHTML = `<span class="font-medium text-slate-800">${value}</span>`;
+                    } else if (header.toUpperCase() === 'ID') {
+                        td.innerHTML = `<span class="text-slate-500 text-xs font-mono">${value}</span>`;
+                    } else {
+                        td.textContent = value;
+                    }
+                    
                     tr.appendChild(td);
                 });
                 
@@ -102,8 +145,8 @@
         }
 
         function showError(msg) {
-            document.getElementById('tableHeader').innerHTML = `<th class="p-4 text-red-500">${msg}</th>`;
-            document.getElementById('tableBody').innerHTML = '';
+            document.getElementById('tableHeader').innerHTML = `<th class="p-4 text-red-400"><i class="fa-solid fa-triangle-exclamation mr-2"></i> Lỗi</th>`;
+            document.getElementById('tableBody').innerHTML = `<tr><td class="p-4 text-slate-600 bg-red-50">${msg}</td></tr>`;
         }
     </script>
 </body>
