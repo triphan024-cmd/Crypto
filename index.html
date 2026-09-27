@@ -58,14 +58,14 @@
                 <table class="w-full text-right border-collapse md:table-fixed" id="summaryTable">
                     <thead>
                         <tr class="bg-slate-800 text-slate-100 uppercase text-xs font-semibold tracking-wider">
-                            <th class="p-4 text-left rounded-tl-lg w-[14%] whitespace-nowrap overflow-hidden text-ellipsis sticky-col bg-slate-800">Asset (Key)</th>
+                            <th class="p-4 text-left rounded-tl-lg w-[14%] whitespace-nowrap overflow-hidden text-ellipsis sticky-col bg-slate-800">Asset</th>
                             <th class="p-4 text-center w-[8%] whitespace-nowrap overflow-hidden text-ellipsis">Rank</th>
-                            <th class="p-4 w-[13%] whitespace-nowrap overflow-hidden text-ellipsis">Investment ($)</th>
-                            <th class="p-4 w-[13%] whitespace-nowrap overflow-hidden text-ellipsis">Cash-out ($)</th>
-                            <th class="p-4 w-[13%] whitespace-nowrap overflow-hidden text-ellipsis">Pending ($)</th>
-                            <th class="p-4 w-[14%] whitespace-nowrap overflow-hidden text-ellipsis">TOTAL REVENUE ($)</th>
-                            <th class="p-4 w-[13%] whitespace-nowrap overflow-hidden text-ellipsis">NET PROFIT ($)</th>
-                            <th class="p-4 rounded-tr-lg w-[12%] whitespace-nowrap overflow-hidden text-ellipsis">ROI (%)</th>
+                            <th class="p-4 w-[13%] whitespace-nowrap overflow-hidden text-ellipsis">Invested</th>
+                            <th class="p-4 w-[13%] whitespace-nowrap overflow-hidden text-ellipsis">Filled</th>
+                            <th class="p-4 w-[13%] whitespace-nowrap overflow-hidden text-ellipsis">Pending</th>
+                            <th class="p-4 w-[14%] whitespace-nowrap overflow-hidden text-ellipsis">Revenue</th>
+                            <th class="p-4 w-[13%] whitespace-nowrap overflow-hidden text-ellipsis">Profit</th>
+                            <th class="p-4 rounded-tr-lg w-[12%] whitespace-nowrap overflow-hidden text-ellipsis">ROI</th>
                         </tr>
                     </thead>
                     <tbody class="text-sm font-medium" id="summaryBody">
@@ -83,6 +83,9 @@
         const SPREADSHEET_ID = '1wyXOB7wktDBG1BeNn_YEiHL4d63R1lKcAoHxcP2hJF8';
         const GID = '0';
         const CSV_URL = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/export?format=csv&gid=${GID}`; 
+        
+        // THAY THẾ LINK WEB APP CỦA GOOGLE APPS SCRIPT VÀO ĐÂY SAU KHI DEPLOY:
+        const GAS_URL = "DÁN_URL_CỦA_BẠN_VÀO_ĐÂY";
 
         // CẤU HÌNH VỐN ĐẦU TƯ CHO TỪNG COIN (Investment)
         const INVESTMENTS = {
@@ -293,11 +296,11 @@
                         ${item.asset}
                     </td>
                     <td data-label="Rank" class="p-4 text-center text-slate-500 font-mono text-xs">${item.rank !== 9999 ? '#' + item.rank : '-'}</td>
-                    <td data-label="Investment" class="p-4 text-slate-600">${formatMoney(item.investment)}</td>
-                    <td data-label="Cash-out" class="p-4 font-semibold text-green-600">${formatMoney(item.cashOut)}</td>
+                    <td data-label="Invested" class="p-4 text-slate-600">${formatMoney(item.investment)}</td>
+                    <td data-label="Filled" class="p-4 font-semibold text-green-600">${formatMoney(item.cashOut)}</td>
                     <td data-label="Pending" class="p-4 font-semibold text-amber-500">${formatMoney(item.pending)}</td>
-                    <td data-label="Total Revenue" class="p-4 font-bold text-slate-800">${formatMoney(item.totalRevenue)}</td>
-                    <td data-label="Net Profit" class="p-4 font-bold ${item.netProfit >= 0 ? 'text-green-600' : 'text-red-500'}">${formatMoney(item.netProfit)}</td>
+                    <td data-label="Revenue" class="p-4 font-bold text-slate-800">${formatMoney(item.totalRevenue)}</td>
+                    <td data-label="Profit" class="p-4 font-bold ${item.netProfit >= 0 ? 'text-green-600' : 'text-red-500'}">${formatMoney(item.netProfit)}</td>
                     <td data-label="ROI" class="p-4 font-bold ${item.roi >= 0 ? 'text-green-600' : 'text-red-500'}">${(item.roi * 100).toFixed(0)}%</td>
                 `;
                 tbody.appendChild(tr);
@@ -312,11 +315,11 @@
                     headerTr.innerHTML = `
                         <td class="py-2 px-4 text-center border-l-2 border-blue-400 sticky-col bg-slate-100">Status</td>
                         <td class="py-2 px-4 text-left">Phase</td>
-                        <td class="py-2 px-4 text-right">Rationale</td>
+                        <td class="py-2 px-4 text-right">Reason</td>
                         <td class="py-2 px-4 text-right">Amount</td>
-                        <td class="py-2 px-4 text-right">Live Price</td>
-                        <td class="py-2 px-4 text-right">Target $</td>
-                        <td class="py-2 px-4 text-right">Quantity</td>
+                        <td class="py-2 px-4 text-right">Price</td>
+                        <td class="py-2 px-4 text-right">Target</td>
+                        <td class="py-2 px-4 text-right">Qty</td>
                         <td class="py-2 px-4 text-right">Ratio</td>
                     `;
                     tbody.appendChild(headerTr);
@@ -335,26 +338,50 @@
 
                     const detailTr = document.createElement('tr');
                     detailTr.className = `detail-row detail-${coinId} hidden-row transition-opacity hover:bg-slate-200 cursor-pointer`;
-                    detailTr.title = "Click để chuyển đổi trạng thái Pending/Filled";
-                    detailTr.onclick = () => {
+                    detailTr.title = "Click để chuyển đổi trạng thái Pending/Filled và cập nhật lên Google Sheet";
+                    detailTr.onclick = async () => {
                         const currentStatus = detail['STATUS'] || '';
+                        let newStatus = currentStatus;
+                        
                         if (currentStatus.includes('Pending')) {
-                            detail['STATUS'] = currentStatus.replace('Pending', 'Filled');
+                            newStatus = currentStatus.replace('Pending', 'Filled');
                         } else if (currentStatus.includes('Filled')) {
-                            detail['STATUS'] = currentStatus.replace('Filled', 'Pending');
+                            newStatus = currentStatus.replace('Filled', 'Pending');
                         }
-                        // Render lại bảng với data mới
+                        
+                        // Update local data for immediate UI response
+                        detail['STATUS'] = newStatus;
                         processSummary(globalData);
+                        
+                        // Sync to Google Sheet if GAS_URL is configured
+                        if (GAS_URL && GAS_URL !== "DÁN_URL_CỦA_BẠN_VÀO_ĐÂY") {
+                            try {
+                                await fetch(GAS_URL, {
+                                    method: 'POST',
+                                    mode: 'no-cors',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                    },
+                                    body: JSON.stringify({
+                                        id: detail['ID'],
+                                        status: newStatus
+                                    })
+                                });
+                                console.log("Đã gửi lệnh cập nhật lên Google Sheet.");
+                            } catch (error) {
+                                console.error("Lỗi khi đồng bộ Google Sheet:", error);
+                            }
+                        }
                     };
                     
                     detailTr.innerHTML = `
                         <td data-label="Status" class="p-4 text-center border-l-2 border-blue-400 truncate sticky-col bg-slate-50 transition-colors group-hover:bg-slate-200">${getStatusBadge(detail['STATUS'])}</td>
                         <td data-label="Phase" class="p-4 text-left text-slate-600 font-medium text-xs md:text-sm truncate" title="${detail['PHASE'] || ''}">${detail['PHASE'] || '-'}</td>
-                        <td data-label="Rationale" class="p-4 text-slate-500 text-xs text-right truncate" title="${detail['PRICING RATIONALE'] || ''}">${detail['PRICING RATIONALE'] || '-'}</td>
+                        <td data-label="Reason" class="p-4 text-slate-500 text-xs text-right truncate" title="${detail['PRICING RATIONALE'] || ''}">${detail['PRICING RATIONALE'] || '-'}</td>
                         <td data-label="Amount" class="p-4 font-bold text-right text-slate-800 truncate">${detail['AMOUNT'] || '-'}</td>
-                        <td data-label="Live Price" class="p-4 font-medium text-right ${priceColorClass} truncate">${formatMoney(currentPrice, true)}</td>
-                        <td data-label="Target $" class="p-4 font-medium text-right text-slate-700 truncate">${detail['TARGET $'] || '-'}</td>
-                        <td data-label="Quantity" class="p-4 text-slate-500 text-right truncate">${detail['QUANTITY'] || '-'}</td>
+                        <td data-label="Price" class="p-4 font-medium text-right ${priceColorClass} truncate">${formatMoney(currentPrice, true)}</td>
+                        <td data-label="Target" class="p-4 font-medium text-right text-slate-700 truncate">${detail['TARGET $'] || '-'}</td>
+                        <td data-label="Qty" class="p-4 text-slate-500 text-right truncate">${detail['QUANTITY'] || '-'}</td>
                         <td data-label="Ratio" class="p-4 text-slate-500 text-right font-semibold truncate">${detail['RATIO'] || '-'}</td>
                     `;
                     tbody.appendChild(detailTr);
@@ -364,13 +391,13 @@
             // --- 3. Tfoot Total ---
             tfoot.innerHTML = `
                 <tr>
-                    <td data-label="Tổng kết" class="p-4 text-left text-lg md:font-bold sticky-col bg-slate-50">TOTAL</td>
+                    <td data-label="TOTAL" class="p-4 text-left text-lg md:font-bold sticky-col bg-slate-50">TOTAL</td>
                     <td data-label="Rank" class="p-4 text-center hidden md:table-cell">-</td>
-                    <td data-label="Investment" class="p-4">${formatMoney(totals.totalInvestment)}</td>
-                    <td data-label="Cash-out" class="p-4">${formatMoney(totals.totalCashOut)}</td>
+                    <td data-label="Invested" class="p-4">${formatMoney(totals.totalInvestment)}</td>
+                    <td data-label="Filled" class="p-4">${formatMoney(totals.totalCashOut)}</td>
                     <td data-label="Pending" class="p-4">${formatMoney(totals.totalPending)}</td>
-                    <td data-label="Total Revenue" class="p-4">${formatMoney(totals.totalRevenueSum)}</td>
-                    <td data-label="Net Profit" class="p-4 ${totals.totalNetProfit >= 0 ? 'text-green-600' : 'text-red-500'}">${formatMoney(totals.totalNetProfit)}</td>
+                    <td data-label="Revenue" class="p-4">${formatMoney(totals.totalRevenueSum)}</td>
+                    <td data-label="Profit" class="p-4 ${totals.totalNetProfit >= 0 ? 'text-green-600' : 'text-red-500'}">${formatMoney(totals.totalNetProfit)}</td>
                     <td data-label="ROI" class="p-4 ${totals.totalROI >= 0 ? 'text-green-600' : 'text-red-500'}">${(totals.totalROI * 100).toFixed(0)}%</td>
                 </tr>
             `;
