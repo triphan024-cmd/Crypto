@@ -383,7 +383,7 @@
                     detailTr.innerHTML = `
                         <td data-label="Status" class="p-4 text-center border-l-2 border-blue-400 truncate sticky-col bg-slate-50 transition-colors group-hover:bg-slate-200">${getStatusBadge(detail['STATUS'])}</td>
                         <td data-label="Phase" class="p-4 text-left text-slate-600 font-medium text-xs md:text-sm truncate" title="${detail['PHASE'] || ''}">${detail['PHASE'] || '-'}</td>
-                        <td data-label="Reason" class="p-4 text-slate-500 text-xs text-right truncate" title="${detail['PRICING RATIONALE'] || ''}">${detail['PRICING RATIONALE'] || '-'}</td>
+                        <td data-label="Reason" class="p-4 text-slate-500 text-xs text-right truncate" title="${detail['RATIONALE'] || ''}">${detail['RATIONALE'] || '-'}</td>
                         <td data-label="Amount" class="p-4 font-bold text-right text-slate-800 truncate">${detail['AMOUNT'] || '-'}</td>
                         <td data-label="Price" class="p-4 font-medium text-right ${priceColorClass} truncate">${formatMoney(currentPrice, true)}</td>
                         <td data-label="Target" class="p-4 font-medium text-right text-slate-700 truncate">${detail['TARGET $'] || '-'}</td>
