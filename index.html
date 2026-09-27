@@ -11,20 +11,14 @@
         .clickable-row { cursor: pointer; transition: background-color 0.2s, border-color 0.2s; border-bottom: 1px solid #f1f5f9; }
         .clickable-row:hover { background-color: #f8fafc; }
         .expanded-row { background-color: #f8fafc; border-bottom-color: transparent !important; }
-        /* Smooth expand transition */
-        .detail-row td { padding: 0 !important; border: none; }
-        .detail-content { 
-            max-height: 0; 
-            overflow: hidden; 
-            transition: max-height 0.4s ease-out, opacity 0.3s ease;
-            opacity: 0;
+        
+        .detail-row {
             background-color: #f8fafc;
+            border-bottom: 1px solid #f1f5f9;
         }
-        .detail-content.expanded { 
-            max-height: 2000px; 
-            opacity: 1;
-            border-bottom: 1px solid #e2e8f0;
-        }
+        .detail-row td { padding-top: 0.75rem !important; padding-bottom: 0.75rem !important; }
+        .detail-row.hidden-row { display: none; }
+        
         .chevron-icon { transition: transform 0.3s ease; }
         .expanded-row .chevron-icon { transform: rotate(180deg); }
         
@@ -47,15 +41,11 @@
                 position: absolute; top: 50%; left: 1rem; transform: translateY(-50%); width: 45%; white-space: nowrap; text-align: left; font-weight: 600; color: #64748b; font-size: 0.75rem; text-transform: uppercase; content: attr(data-label); 
             }
             
-            /* Exceptions for detail row container */
-            .responsive-table tr.detail-row { border: none !important; margin: 0 !important; box-shadow: none !important; border-radius: 0 !important; background: transparent; }
-            .responsive-table .detail-row td { padding: 0 !important; display: block; text-align: left !important; border: none; }
-            .responsive-table .detail-row td:before { display: none; }
-            
-            /* Inner detail table */
-            .detail-content { padding: 0 !important; }
-            .detail-content > div { padding: 0.5rem !important; }
-            .detail-content .responsive-table tr { box-shadow: none; border-radius: 0.5rem; border: 1px solid #e2e8f0; margin-bottom: 0.5rem; }
+            /* Exceptions for detail rows on mobile */
+            .responsive-table tr.detail-row { 
+                border: 1px dashed #cbd5e1; margin-top: -0.5rem; margin-left: 1rem; margin-right: 1rem; border-radius: 0.5rem; box-shadow: none; background: #f8fafc;
+            }
+            .responsive-table tr.detail-row.hidden-row { display: none; }
             
             .clickable-row { border-bottom: none !important; }
         }
@@ -255,18 +245,18 @@
 
         function toggleRow(coinId) {
             const mainRow = document.getElementById(`row-${coinId}`);
-            const detailWrapper = document.getElementById(`wrapper-${coinId}`);
+            const detailRows = document.querySelectorAll(`.detail-${coinId}`);
             
             if (mainRow.classList.contains('expanded-row')) {
                 mainRow.classList.remove('expanded-row');
-                detailWrapper.classList.remove('expanded');
+                detailRows.forEach(r => r.classList.add('hidden-row'));
             } else {
-                // Tự động đóng các accordion khác (tuỳ chọn)
+                // Tự động đóng các accordion khác
                 document.querySelectorAll('.expanded-row').forEach(row => row.classList.remove('expanded-row'));
-                document.querySelectorAll('.detail-content').forEach(wrapper => wrapper.classList.remove('expanded'));
+                document.querySelectorAll('.detail-row').forEach(row => row.classList.add('hidden-row'));
                 
                 mainRow.classList.add('expanded-row');
-                detailWrapper.classList.add('expanded');
+                detailRows.forEach(r => r.classList.remove('hidden-row'));
             }
         }
 
@@ -299,66 +289,33 @@
                 `;
                 tbody.appendChild(tr);
 
-                // --- 2. Hàng Detail (Dropdown Row) ---
+                // --- 2. Hàng Detail (Dropdown Rows) ---
                 const currentPrice = liveData[item.asset] ? liveData[item.asset].price : null;
                 
-                let detailHtml = `
-                    <div class="md:pl-8 md:pr-4 md:pb-6 md:pt-2">
-                        <table class="w-full text-left border-collapse whitespace-nowrap bg-white md:rounded-lg md:shadow-sm md:border md:border-slate-200 overflow-hidden responsive-table">
-                            <thead>
-                                <tr class="bg-slate-100/80 text-slate-500 uppercase text-[11px] font-bold tracking-wider">
-                                    <th class="py-2.5 px-4 border-b border-slate-200">Status</th>
-                                    <th class="py-2.5 px-4 border-b border-slate-200">Phase</th>
-                                    <th class="py-2.5 px-4 border-b border-slate-200">Rationale</th>
-                                    <th class="py-2.5 px-4 border-b border-slate-200 text-right text-blue-600 bg-blue-50/50">Live Price</th>
-                                    <th class="py-2.5 px-4 border-b border-slate-200 text-right">Target $</th>
-                                    <th class="py-2.5 px-4 border-b border-slate-200 text-right">Quantity</th>
-                                    <th class="py-2.5 px-4 border-b border-slate-200 text-right">Ratio</th>
-                                    <th class="py-2.5 px-4 border-b border-slate-200 text-right text-slate-700">Amount</th>
-                                </tr>
-                            </thead>
-                            <tbody class="text-sm divide-y divide-slate-100">
-                `;
-                
                 item.details.forEach(detail => {
-                    // Logic màu sắc so sánh giá
                     const targetVal = parseMoney(detail['TARGET $']);
                     let priceColorClass = 'text-blue-600';
                     if (currentPrice && targetVal > 0) {
                         const diff = (currentPrice - targetVal) / targetVal;
-                        // Nổi bật nếu giá Live sát Target (cách 5%)
                         if (diff >= -0.05 && diff <= 0) {
                             priceColorClass = 'text-green-500 font-bold';
                         }
                     }
 
-                    detailHtml += `
-                        <tr class="hover:bg-slate-50 transition-colors">
-                            <td data-label="Status" class="py-2.5 px-4">${getStatusBadge(detail['STATUS'])}</td>
-                            <td data-label="Phase" class="py-2.5 px-4 text-slate-600 font-medium">${detail['PHASE'] || '-'}</td>
-                            <td data-label="Rationale" class="py-2.5 px-4 text-slate-500 text-xs">${detail['PRICING RATIONALE'] || '-'}</td>
-                            <td data-label="Live Price" class="py-2.5 px-4 text-right font-medium ${priceColorClass} bg-blue-50/20">${formatMoney(currentPrice, true)}</td>
-                            <td data-label="Target $" class="py-2.5 px-4 text-right font-medium text-slate-700">${detail['TARGET $'] || '-'}</td>
-                            <td data-label="Quantity" class="py-2.5 px-4 text-right text-slate-500">${detail['QUANTITY'] || '-'}</td>
-                            <td data-label="Ratio" class="py-2.5 px-4 text-right text-slate-500">${detail['RATIO'] || '-'}</td>
-                            <td data-label="Amount" class="py-2.5 px-4 text-right font-bold text-slate-800">${detail['AMOUNT'] || '-'}</td>
-                        </tr>
+                    const detailTr = document.createElement('tr');
+                    detailTr.className = `detail-row detail-${coinId} hidden-row transition-opacity hover:bg-slate-100`;
+                    detailTr.innerHTML = `
+                        <td data-label="Phase" class="p-4 text-left text-slate-600 font-medium md:pl-10 text-xs md:text-sm border-l-2 border-blue-400">${detail['PHASE'] || '-'}</td>
+                        <td data-label="Status" class="p-4 text-center">${getStatusBadge(detail['STATUS'])}</td>
+                        <td data-label="Rationale" class="p-4 text-slate-500 text-xs text-right">${detail['PRICING RATIONALE'] || '-'}</td>
+                        <td data-label="Live Price" class="p-4 font-medium text-right ${priceColorClass}">${formatMoney(currentPrice, true)}</td>
+                        <td data-label="Target $" class="p-4 font-medium text-right text-slate-700">${detail['TARGET $'] || '-'}</td>
+                        <td data-label="Quantity" class="p-4 text-slate-500 text-right">${detail['QUANTITY'] || '-'}</td>
+                        <td data-label="Amount" class="p-4 font-bold text-right text-slate-800">${detail['AMOUNT'] || '-'}</td>
+                        <td data-label="Ratio" class="p-4 text-slate-500 text-right font-semibold">${detail['RATIO'] || '-'}</td>
                     `;
+                    tbody.appendChild(detailTr);
                 });
-                
-                detailHtml += `</tbody></table></div>`;
-
-                const detailTr = document.createElement('tr');
-                detailTr.className = 'detail-row';
-                detailTr.innerHTML = `
-                    <td colspan="8">
-                        <div id="wrapper-${coinId}" class="detail-content">
-                            ${detailHtml}
-                        </div>
-                    </td>
-                `;
-                
-                tbody.appendChild(detailTr);
             });
 
             // --- 3. Tfoot Total ---
