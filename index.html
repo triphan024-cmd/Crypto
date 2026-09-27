@@ -66,17 +66,17 @@
         <!-- Summary Dashboard -->
         <div class="bg-white md:rounded-xl shadow-lg border-x border-t md:border-slate-200 border-transparent overflow-hidden mb-8 responsive-table">
             <div class="overflow-x-auto">
-                <table class="w-full text-right border-collapse whitespace-nowrap" id="summaryTable">
+                <table class="w-full text-right border-collapse md:table-fixed" id="summaryTable">
                     <thead>
                         <tr class="bg-slate-800 text-slate-100 uppercase text-xs font-semibold tracking-wider">
-                            <th class="p-4 text-left rounded-tl-lg">Asset (Key)</th>
-                            <th class="p-4 text-center">Rank</th>
-                            <th class="p-4">Investment ($)</th>
-                            <th class="p-4">Cash-out ($)</th>
-                            <th class="p-4">Pending ($)</th>
-                            <th class="p-4">TOTAL REVENUE ($)</th>
-                            <th class="p-4">NET PROFIT ($)</th>
-                            <th class="p-4 rounded-tr-lg">ROI (%)</th>
+                            <th class="p-4 text-left rounded-tl-lg w-[14%] whitespace-nowrap overflow-hidden text-ellipsis">Asset (Key)</th>
+                            <th class="p-4 text-center w-[8%] whitespace-nowrap overflow-hidden text-ellipsis">Rank</th>
+                            <th class="p-4 w-[13%] whitespace-nowrap overflow-hidden text-ellipsis">Investment ($)</th>
+                            <th class="p-4 w-[13%] whitespace-nowrap overflow-hidden text-ellipsis">Cash-out ($)</th>
+                            <th class="p-4 w-[13%] whitespace-nowrap overflow-hidden text-ellipsis">Pending ($)</th>
+                            <th class="p-4 w-[14%] whitespace-nowrap overflow-hidden text-ellipsis">TOTAL REVENUE ($)</th>
+                            <th class="p-4 w-[13%] whitespace-nowrap overflow-hidden text-ellipsis">NET PROFIT ($)</th>
+                            <th class="p-4 rounded-tr-lg w-[12%] whitespace-nowrap overflow-hidden text-ellipsis">ROI (%)</th>
                         </tr>
                     </thead>
                     <tbody class="text-sm font-medium" id="summaryBody">
@@ -310,13 +310,13 @@
                     const headerTr = document.createElement('tr');
                     headerTr.className = `detail-row detail-${coinId} hidden-row bg-slate-200/50 text-slate-500 uppercase text-[10px] font-bold tracking-wider hidden md:table-row`;
                     headerTr.innerHTML = `
-                        <td class="py-2 px-4 text-left md:pl-10 border-l-2 border-blue-400">Phase</td>
-                        <td class="py-2 px-4 text-center">Status</td>
+                        <td class="py-2 px-4 text-center md:pl-10 border-l-2 border-blue-400">Status</td>
+                        <td class="py-2 px-4 text-left">Phase</td>
                         <td class="py-2 px-4 text-right">Rationale</td>
+                        <td class="py-2 px-4 text-right">Amount</td>
                         <td class="py-2 px-4 text-right">Live Price</td>
                         <td class="py-2 px-4 text-right">Target $</td>
                         <td class="py-2 px-4 text-right">Quantity</td>
-                        <td class="py-2 px-4 text-right">Amount</td>
                         <td class="py-2 px-4 text-right">Ratio</td>
                     `;
                     tbody.appendChild(headerTr);
@@ -347,14 +347,14 @@
                     };
                     
                     detailTr.innerHTML = `
-                        <td data-label="Phase" class="p-4 text-left text-slate-600 font-medium md:pl-10 text-xs md:text-sm border-l-2 border-blue-400">${detail['PHASE'] || '-'}</td>
-                        <td data-label="Status" class="p-4 text-center">${getStatusBadge(detail['STATUS'])}</td>
-                        <td data-label="Rationale" class="p-4 text-slate-500 text-xs text-right">${detail['PRICING RATIONALE'] || '-'}</td>
-                        <td data-label="Live Price" class="p-4 font-medium text-right ${priceColorClass}">${formatMoney(currentPrice, true)}</td>
-                        <td data-label="Target $" class="p-4 font-medium text-right text-slate-700">${detail['TARGET $'] || '-'}</td>
-                        <td data-label="Quantity" class="p-4 text-slate-500 text-right">${detail['QUANTITY'] || '-'}</td>
-                        <td data-label="Amount" class="p-4 font-bold text-right text-slate-800">${detail['AMOUNT'] || '-'}</td>
-                        <td data-label="Ratio" class="p-4 text-slate-500 text-right font-semibold">${detail['RATIO'] || '-'}</td>
+                        <td data-label="Status" class="p-4 text-center md:pl-10 border-l-2 border-blue-400 truncate">${getStatusBadge(detail['STATUS'])}</td>
+                        <td data-label="Phase" class="p-4 text-left text-slate-600 font-medium text-xs md:text-sm truncate" title="${detail['PHASE'] || ''}">${detail['PHASE'] || '-'}</td>
+                        <td data-label="Rationale" class="p-4 text-slate-500 text-xs text-right truncate" title="${detail['PRICING RATIONALE'] || ''}">${detail['PRICING RATIONALE'] || '-'}</td>
+                        <td data-label="Amount" class="p-4 font-bold text-right text-slate-800 truncate">${detail['AMOUNT'] || '-'}</td>
+                        <td data-label="Live Price" class="p-4 font-medium text-right ${priceColorClass} truncate">${formatMoney(currentPrice, true)}</td>
+                        <td data-label="Target $" class="p-4 font-medium text-right text-slate-700 truncate">${detail['TARGET $'] || '-'}</td>
+                        <td data-label="Quantity" class="p-4 text-slate-500 text-right truncate">${detail['QUANTITY'] || '-'}</td>
+                        <td data-label="Ratio" class="p-4 text-slate-500 text-right font-semibold truncate">${detail['RATIO'] || '-'}</td>
                     `;
                     tbody.appendChild(detailTr);
                 });
