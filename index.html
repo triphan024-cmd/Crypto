@@ -43,12 +43,9 @@
                 <span class="md:hidden">Portfolio</span>
             </h1>
             <div class="flex items-center gap-3">
-                <button onclick="refreshLivePrices()" class="text-sm bg-blue-50 text-blue-600 hover:bg-blue-100 px-3 py-2 md:px-4 md:py-2 rounded-full shadow-sm font-medium transition-colors border border-blue-200 flex items-center">
-                    <i class="fa-solid fa-arrows-rotate mr-1" id="refreshIcon"></i> <span class="hidden md:inline">Làm mới giá</span><span class="md:hidden">Refresh</span>
+                <button onclick="refreshData()" class="text-sm bg-blue-50 text-blue-600 hover:bg-blue-100 px-3 py-2 md:px-4 md:py-2 rounded-full shadow-sm font-medium transition-colors border border-blue-200 flex items-center">
+                    <i class="fa-solid fa-arrows-rotate mr-1" id="refreshIcon"></i> Sync
                 </button>
-                <div class="text-sm text-slate-500 bg-white px-4 py-2 rounded-full shadow-sm hidden md:block">
-                    <i class="fa-solid fa-circle-check text-green-500 mr-1"></i> Live Data Sync
-                </div>
             </div>
         </div>
         
@@ -133,10 +130,10 @@
             }
         }
 
-        async function initDashboard() {
-            await fetchPrices();
-
-            Papa.parse(CSV_URL, {
+        async function fetchAndParseData(callback) {
+            const noCacheUrl = CSV_URL + "&t=" + new Date().getTime(); // Prevent browser caching
+            
+            Papa.parse(noCacheUrl, {
                 download: true,
                 header: true,
                 complete: function(results) {
@@ -147,19 +144,28 @@
                     } else {
                         document.getElementById('summaryBody').innerHTML = `<tr><td colspan="8" class="p-4 text-center text-red-500">Không có dữ liệu</td></tr>`;
                     }
+                    if (callback) callback();
                 },
                 error: function(err) {
                     document.getElementById('summaryBody').innerHTML = `<tr><td colspan="8" class="p-4 text-center text-red-500">Lỗi khi tải dữ liệu: ${err.message}</td></tr>`;
+                    if (callback) callback();
                 }
             });
         }
 
-        async function refreshLivePrices() {
+        async function initDashboard() {
+            await fetchPrices();
+            fetchAndParseData();
+        }
+
+        async function refreshData() {
             const icon = document.getElementById('refreshIcon');
             icon.classList.add('fa-spin'); // spin animation
-            await fetchPrices();
-            processSummary(globalData); // rerender with new prices
-            setTimeout(() => icon.classList.remove('fa-spin'), 500); // stop spin
+            
+            await fetchPrices(); // update crypto prices
+            fetchAndParseData(() => {
+                setTimeout(() => icon.classList.remove('fa-spin'), 500); // stop spin when both prices and sheet are loaded
+            });
         }
 
         function formatMoney(amount, forceDecimals = false) {
