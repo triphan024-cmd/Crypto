@@ -83,26 +83,48 @@
         };
 
         let globalData = []; 
+        let livePrices = {};
 
-        Papa.parse(CSV_URL, {
-            download: true,
-            header: true,
-            complete: function(results) {
-                const data = results.data;
-                if(data && data.length > 0) {
-                    globalData = data.filter(row => Object.values(row).some(val => val && val.trim() !== ''));
-                    processSummary(globalData);
-                } else {
-                    document.getElementById('summaryBody').innerHTML = `<tr><td colspan="7" class="p-4 text-center text-red-500">Không có dữ liệu</td></tr>`;
-                }
-            },
-            error: function(err) {
-                document.getElementById('summaryBody').innerHTML = `<tr><td colspan="7" class="p-4 text-center text-red-500">Lỗi khi tải dữ liệu: ${err.message}</td></tr>`;
+        async function initDashboard() {
+            try {
+                // Lấy giá Live từ Binance
+                const res = await fetch('https://api.binance.com/api/v3/ticker/price');
+                const tickerData = await res.json();
+                
+                tickerData.forEach(item => {
+                    if (item.symbol.endsWith('USDT')) {
+                        const coin = item.symbol.replace('USDT', '');
+                        livePrices[coin] = parseFloat(item.price);
+                    }
+                });
+            } catch (err) {
+                console.warn("Không thể tải giá live từ Binance:", err);
             }
-        });
 
-        function formatMoney(amount) {
-            return '$' + amount.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+            // Parse Google Sheet CSV sau khi có giá
+            Papa.parse(CSV_URL, {
+                download: true,
+                header: true,
+                complete: function(results) {
+                    const data = results.data;
+                    if(data && data.length > 0) {
+                        globalData = data.filter(row => Object.values(row).some(val => val && val.trim() !== ''));
+                        processSummary(globalData);
+                    } else {
+                        document.getElementById('summaryBody').innerHTML = `<tr><td colspan="7" class="p-4 text-center text-red-500">Không có dữ liệu</td></tr>`;
+                    }
+                },
+                error: function(err) {
+                    document.getElementById('summaryBody').innerHTML = `<tr><td colspan="7" class="p-4 text-center text-red-500">Lỗi khi tải dữ liệu: ${err.message}</td></tr>`;
+                }
+            });
+        }
+
+        function formatMoney(amount, forceDecimals = false) {
+            if (amount === undefined || amount === null) return '-';
+            const options = { minimumFractionDigits: 0, maximumFractionDigits: 4 };
+            if (forceDecimals && amount < 10) options.minimumFractionDigits = 2; // Show decimals for small prices
+            return '$' + amount.toLocaleString('en-US', options);
         }
 
         function parseMoney(str) {
@@ -224,15 +246,17 @@
                 tbody.appendChild(tr);
 
                 // --- 2. Hàng Detail (Dropdown Row) ---
+                const currentPrice = livePrices[item.asset];
+                
                 let detailHtml = `
                     <div class="pl-8 pr-4 pb-6 pt-2">
                         <table class="w-full text-left border-collapse whitespace-nowrap bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
                             <thead>
                                 <tr class="bg-slate-100/80 text-slate-500 uppercase text-[11px] font-bold tracking-wider">
-                                    <th class="py-2.5 px-4 border-b border-slate-200">ID</th>
                                     <th class="py-2.5 px-4 border-b border-slate-200">Status</th>
                                     <th class="py-2.5 px-4 border-b border-slate-200">Phase</th>
                                     <th class="py-2.5 px-4 border-b border-slate-200">Rationale</th>
+                                    <th class="py-2.5 px-4 border-b border-slate-200 text-right text-blue-600 bg-blue-50/50">Live Price</th>
                                     <th class="py-2.5 px-4 border-b border-slate-200 text-right">Target $</th>
                                     <th class="py-2.5 px-4 border-b border-slate-200 text-right">Quantity</th>
                                     <th class="py-2.5 px-4 border-b border-slate-200 text-right">Ratio</th>
@@ -243,12 +267,23 @@
                 `;
                 
                 item.details.forEach(detail => {
+                    // Logic màu sắc so sánh giá
+                    const targetVal = parseMoney(detail['TARGET $']);
+                    let priceColorClass = 'text-blue-600';
+                    if (currentPrice && targetVal > 0) {
+                        const diff = (currentPrice - targetVal) / targetVal;
+                        // Nổi bật nếu giá Live sát Target (cách 5%)
+                        if (diff >= -0.05 && diff <= 0) {
+                            priceColorClass = 'text-green-500 font-bold';
+                        }
+                    }
+
                     detailHtml += `
                         <tr class="hover:bg-slate-50 transition-colors">
-                            <td class="py-2.5 px-4 text-slate-400 font-mono text-xs">${detail['ID'] || '-'}</td>
                             <td class="py-2.5 px-4">${getStatusBadge(detail['STATUS'])}</td>
                             <td class="py-2.5 px-4 text-slate-600 font-medium">${detail['PHASE'] || '-'}</td>
                             <td class="py-2.5 px-4 text-slate-500 text-xs">${detail['PRICING RATIONALE'] || '-'}</td>
+                            <td class="py-2.5 px-4 text-right font-medium ${priceColorClass} bg-blue-50/20">${formatMoney(currentPrice, true)}</td>
                             <td class="py-2.5 px-4 text-right font-medium text-slate-700">${detail['TARGET $'] || '-'}</td>
                             <td class="py-2.5 px-4 text-right text-slate-500">${detail['QUANTITY'] || '-'}</td>
                             <td class="py-2.5 px-4 text-right text-slate-500">${detail['RATIO'] || '-'}</td>
@@ -285,6 +320,9 @@
                 </tr>
             `;
         }
+        
+        // Khởi chạy
+        initDashboard();
     </script>
 </body>
 </html>
