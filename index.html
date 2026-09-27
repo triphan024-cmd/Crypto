@@ -6,44 +6,108 @@
     <title>Crypto Trading Dashboard</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
-    <!-- Add FontAwesome for icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .clickable-row { cursor: pointer; transition: background-color 0.2s; }
+        .clickable-row:hover { background-color: #f1f5f9; }
+        /* Modal transition */
+        .modal-enter { opacity: 0; transform: scale(0.95); }
+        .modal-enter-active { opacity: 1; transform: scale(1); transition: opacity 300ms, transform 300ms; }
+        .modal-exit { opacity: 1; transform: scale(1); }
+        .modal-exit-active { opacity: 0; transform: scale(0.95); transition: opacity 300ms, transform 300ms; }
+    </style>
 </head>
-<body class="bg-slate-50 p-4 md:p-8 min-h-screen">
+<body class="bg-slate-50 p-4 md:p-8 min-h-screen text-slate-800">
     <div class="max-w-7xl mx-auto">
         <div class="flex items-center justify-between mb-8">
-            <h1 class="text-3xl font-bold text-slate-800 flex items-center gap-3">
-                <i class="fa-solid fa-chart-line text-blue-600"></i>
-                Crypto Trading Dashboard
+            <h1 class="text-3xl font-bold flex items-center gap-3">
+                <i class="fa-solid fa-chart-pie text-blue-600"></i>
+                Portfolio Summary
             </h1>
             <div class="text-sm text-slate-500 bg-white px-4 py-2 rounded-full shadow-sm">
                 <i class="fa-solid fa-circle-check text-green-500 mr-1"></i> Live Data Sync
             </div>
         </div>
         
-        <div class="bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden">
+        <!-- Summary Dashboard -->
+        <div class="bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden mb-8">
             <div class="overflow-x-auto">
-                <table class="w-full text-left border-collapse whitespace-nowrap" id="dashboardTable">
+                <table class="w-full text-right border-collapse whitespace-nowrap" id="summaryTable">
                     <thead>
-                        <tr class="bg-slate-800 text-slate-100 uppercase text-xs font-semibold tracking-wider" id="tableHeader">
-                            <th class="p-4 rounded-tl-lg">Đang tải dữ liệu...</th>
+                        <tr class="bg-slate-800 text-slate-100 uppercase text-xs font-semibold tracking-wider">
+                            <th class="p-4 text-left rounded-tl-lg">Asset (Key)</th>
+                            <th class="p-4">Investment ($)</th>
+                            <th class="p-4">Cash-out ($)</th>
+                            <th class="p-4">Pending ($)</th>
+                            <th class="p-4">TOTAL REVENUE ($)</th>
+                            <th class="p-4">NET PROFIT ($)</th>
+                            <th class="p-4 rounded-tr-lg">ROI (%)</th>
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-slate-100 text-sm" id="tableBody">
-                        <!-- Data rows will be injected here -->
+                    <tbody class="divide-y divide-slate-100 text-sm font-medium" id="summaryBody">
+                        <tr><td colspan="7" class="p-4 text-center text-slate-500">Đang tải dữ liệu...</td></tr>
                     </tbody>
+                    <tfoot class="bg-slate-50 font-bold text-slate-900 border-t-2 border-slate-300" id="summaryFooter">
+                        <!-- Total row injected here -->
+                    </tfoot>
                 </table>
             </div>
         </div>
     </div>
 
+    <!-- Modal for Details -->
+    <div id="detailModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-900 bg-opacity-50 backdrop-blur-sm p-4">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col transform transition-all">
+            <div class="flex items-center justify-between p-6 border-b border-slate-100">
+                <h2 class="text-2xl font-bold text-slate-800" id="modalTitle">Chi tiết mức chốt lời</h2>
+                <button onclick="closeModal()" class="text-slate-400 hover:text-red-500 transition-colors">
+                    <i class="fa-solid fa-xmark text-2xl"></i>
+                </button>
+            </div>
+            <div class="p-6 overflow-y-auto">
+                <div class="overflow-x-auto rounded-lg border border-slate-200">
+                    <table class="w-full text-left border-collapse whitespace-nowrap">
+                        <thead>
+                            <tr class="bg-slate-100 text-slate-600 uppercase text-xs font-semibold tracking-wider">
+                                <th class="p-3">ID</th>
+                                <th class="p-3">Status</th>
+                                <th class="p-3">Phase</th>
+                                <th class="p-3">Pricing Rationale</th>
+                                <th class="p-3 text-right">Target $</th>
+                                <th class="p-3 text-right">Quantity</th>
+                                <th class="p-3 text-right">Ratio</th>
+                                <th class="p-3 text-right">Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100 text-sm" id="detailBody">
+                            <!-- Detail rows injected here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="p-4 border-t border-slate-100 bg-slate-50 rounded-b-xl text-right">
+                <button onclick="closeModal()" class="px-6 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-700 transition-colors font-medium">Đóng</button>
+            </div>
+        </div>
+    </div>
+
     <script>
-        // --- CẤU HÌNH CSV URL ---
-        // Sử dụng link export format=csv thay vì link edit
         const SPREADSHEET_ID = '1wyXOB7wktDBG1BeNn_YEiHL4d63R1lKcAoHxcP2hJF8';
         const GID = '0';
         const CSV_URL = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/export?format=csv&gid=${GID}`; 
-        
+
+        // CẤU HÌNH VỐN ĐẦU TƯ CHO TỪNG COIN (Investment)
+        const INVESTMENTS = {
+            'BTC': 18000,
+            'ETH': 18000,
+            'ENA': 14000,
+            'AVAX': 15000,
+            'LINK': 11000,
+            'SUI': 1000
+        };
+
+        let globalData = []; // Store raw data
+
         // Tải và Parse dữ liệu
         Papa.parse(CSV_URL, {
             download: true,
@@ -51,102 +115,174 @@
             complete: function(results) {
                 const data = results.data;
                 if(data && data.length > 0) {
-                    renderTable(data);
+                    // Filter out empty rows
+                    globalData = data.filter(row => Object.values(row).some(val => val && val.trim() !== ''));
+                    processSummary(globalData);
                 } else {
-                    showError("Không có dữ liệu hoặc lỗi parse.");
+                    document.getElementById('summaryBody').innerHTML = `<tr><td colspan="7" class="p-4 text-center text-red-500">Không có dữ liệu</td></tr>`;
                 }
             },
             error: function(err) {
-                showError("Lỗi khi tải dữ liệu: " + err.message);
+                document.getElementById('summaryBody').innerHTML = `<tr><td colspan="7" class="p-4 text-center text-red-500">Lỗi khi tải dữ liệu: ${err.message}</td></tr>`;
             }
         });
 
-        // Hàm render màu sắc cho Status
+        // Hàm format tiền tệ
+        function formatMoney(amount) {
+            return '$' + amount.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+        }
+
+        // Hàm parse string tiền tệ ($1,000) thành số (1000)
+        function parseMoney(str) {
+            if (!str) return 0;
+            return parseFloat(str.replace(/[\$\,]/g, '')) || 0;
+        }
+
+        function processSummary(data) {
+            const summary = {};
+
+            // Khởi tạo và gom nhóm dữ liệu theo COIN
+            data.forEach(row => {
+                const coin = row['COIN'] ? row['COIN'].trim() : null;
+                if (!coin) return;
+
+                if (!summary[coin]) {
+                    summary[coin] = {
+                        asset: coin,
+                        investment: INVESTMENTS[coin] || 0,
+                        cashOut: 0,
+                        pending: 0,
+                        details: []
+                    };
+                }
+
+                summary[coin].details.push(row);
+
+                const amount = parseMoney(row['AMOUNT']);
+                const status = row['STATUS'] || '';
+
+                if (status.includes('Filled')) {
+                    summary[coin].cashOut += amount;
+                } else if (status.includes('Pending')) {
+                    summary[coin].pending += amount;
+                }
+            });
+
+            // Tính toán Revenue, Profit, ROI
+            let totalInvestment = 0;
+            let totalCashOut = 0;
+            let totalPending = 0;
+            let totalRevenueSum = 0;
+            let totalNetProfit = 0;
+
+            const summaryList = Object.values(summary).map(item => {
+                item.totalRevenue = item.cashOut + item.pending;
+                item.netProfit = item.totalRevenue - item.investment;
+                item.roi = item.investment > 0 ? (item.netProfit / item.investment) : 0;
+
+                totalInvestment += item.investment;
+                totalCashOut += item.cashOut;
+                totalPending += item.pending;
+                totalRevenueSum += item.totalRevenue;
+                totalNetProfit += item.netProfit;
+
+                return item;
+            });
+
+            const totalROI = totalInvestment > 0 ? (totalNetProfit / totalInvestment) : 0;
+
+            renderSummary(summaryList, {
+                totalInvestment, totalCashOut, totalPending, totalRevenueSum, totalNetProfit, totalROI
+            });
+        }
+
+        function renderSummary(summaryList, totals) {
+            const tbody = document.getElementById('summaryBody');
+            const tfoot = document.getElementById('summaryFooter');
+            tbody.innerHTML = '';
+
+            summaryList.forEach(item => {
+                const tr = document.createElement('tr');
+                tr.className = 'clickable-row group';
+                tr.onclick = () => openModal(item.asset, item.details);
+                
+                tr.innerHTML = `
+                    <td class="p-4 text-left font-bold text-blue-600 group-hover:text-blue-800">${item.asset}</td>
+                    <td class="p-4 text-slate-600">${formatMoney(item.investment)}</td>
+                    <td class="p-4 text-green-600">${formatMoney(item.cashOut)}</td>
+                    <td class="p-4 text-amber-600">${formatMoney(item.pending)}</td>
+                    <td class="p-4 text-slate-800">${formatMoney(item.totalRevenue)}</td>
+                    <td class="p-4 ${item.netProfit >= 0 ? 'text-green-600' : 'text-red-500'}">${formatMoney(item.netProfit)}</td>
+                    <td class="p-4 ${item.roi >= 0 ? 'text-green-600' : 'text-red-500'}">${(item.roi * 100).toFixed(0)}%</td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            tfoot.innerHTML = `
+                <tr>
+                    <td class="p-4 text-left text-lg">TOTAL</td>
+                    <td class="p-4">${formatMoney(totals.totalInvestment)}</td>
+                    <td class="p-4">${formatMoney(totals.totalCashOut)}</td>
+                    <td class="p-4">${formatMoney(totals.totalPending)}</td>
+                    <td class="p-4">${formatMoney(totals.totalRevenueSum)}</td>
+                    <td class="p-4 ${totals.totalNetProfit >= 0 ? 'text-green-600' : 'text-red-500'}">${formatMoney(totals.totalNetProfit)}</td>
+                    <td class="p-4 ${totals.totalROI >= 0 ? 'text-green-600' : 'text-red-500'}">${(totals.totalROI * 100).toFixed(0)}%</td>
+                </tr>
+            `;
+        }
+
+        // --- Logic Hiển thị Chi Tiết ---
+        
         function getStatusBadge(statusText) {
             if (!statusText) return '-';
             if (statusText.includes('Filled')) {
-                return `<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-200">
-                            ${statusText}
-                        </span>`;
+                return `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">${statusText}</span>`;
             } else if (statusText.includes('Pending')) {
-                return `<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800 border border-amber-200">
-                            ${statusText}
-                        </span>`;
+                return `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800">${statusText}</span>`;
             }
-            return `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-800">
-                        ${statusText}
-                    </span>`;
-        }
-        
-        // Hàm render Logo Coin
-        function getCoinBadge(coin) {
-            if (!coin) return '-';
-            // Simple hash to generate a somewhat consistent color for coins
-            const colors = ['bg-blue-100 text-blue-700', 'bg-indigo-100 text-indigo-700', 'bg-purple-100 text-purple-700', 'bg-pink-100 text-pink-700', 'bg-orange-100 text-orange-700'];
-            const colorIndex = coin.length % colors.length;
-            const colorClass = colors[colorIndex];
-            
-            return `<span class="font-bold ${colorClass} px-2 py-1 rounded-md text-xs border border-opacity-20 border-current shadow-sm">${coin}</span>`;
+            return `<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-800">${statusText}</span>`;
         }
 
-        function renderTable(data) {
-            const headerRow = document.getElementById('tableHeader');
-            const tbody = document.getElementById('tableBody');
+        function openModal(coin, details) {
+            document.getElementById('modalTitle').innerHTML = `Chi tiết các mức chốt lời: <span class="text-blue-600">${coin}</span>`;
             
-            headerRow.innerHTML = '';
-            tbody.innerHTML = '';
+            const detailBody = document.getElementById('detailBody');
+            detailBody.innerHTML = '';
 
-            // Clean headers (remove any empty strings)
-            let rawHeaders = Object.keys(data[0]);
-            const headers = rawHeaders.filter(h => h.trim() !== '');
-
-            if (headers.length === 0) return;
-
-            // Render headers
-            headers.forEach(headerText => {
-                const th = document.createElement('th');
-                th.className = 'p-4';
-                th.textContent = headerText;
-                headerRow.appendChild(th);
-            });
-
-            // Render rows
-            data.forEach(row => {
-                // Skip completely empty rows
-                if (headers.every(h => !row[h] || row[h].trim() === '')) return;
-
+            details.forEach(row => {
                 const tr = document.createElement('tr');
-                tr.className = 'hover:bg-blue-50 transition-colors duration-150 group';
+                tr.className = 'hover:bg-slate-50';
                 
-                headers.forEach(header => {
-                    const td = document.createElement('td');
-                    td.className = 'p-4 text-slate-700 align-middle group-hover:text-slate-900';
-                    
-                    const value = row[header] ? row[header].trim() : '-';
-                    
-                    // Custom formatting based on column name
-                    if (header.toUpperCase() === 'STATUS') {
-                        td.innerHTML = getStatusBadge(value);
-                    } else if (header.toUpperCase() === 'COIN') {
-                        td.innerHTML = getCoinBadge(value);
-                    } else if (header.toUpperCase() === 'AMOUNT' || header.toUpperCase().includes('TARGET')) {
-                        td.innerHTML = `<span class="font-medium text-slate-800">${value}</span>`;
-                    } else if (header.toUpperCase() === 'ID') {
-                        td.innerHTML = `<span class="text-slate-500 text-xs font-mono">${value}</span>`;
-                    } else {
-                        td.textContent = value;
-                    }
-                    
-                    tr.appendChild(td);
-                });
-                
-                tbody.appendChild(tr);
+                tr.innerHTML = `
+                    <td class="p-3 text-slate-500 font-mono text-xs">${row['ID'] || '-'}</td>
+                    <td class="p-3">${getStatusBadge(row['STATUS'])}</td>
+                    <td class="p-3 text-slate-700">${row['PHASE'] || '-'}</td>
+                    <td class="p-3 text-slate-700 text-xs">${row['PRICING RATIONALE'] || '-'}</td>
+                    <td class="p-3 text-right font-medium text-slate-800">${row['TARGET $'] || '-'}</td>
+                    <td class="p-3 text-right text-slate-600">${row['QUANTITY'] || '-'}</td>
+                    <td class="p-3 text-right text-slate-600">${row['RATIO'] || '-'}</td>
+                    <td class="p-3 text-right font-bold text-slate-800">${row['AMOUNT'] || '-'}</td>
+                `;
+                detailBody.appendChild(tr);
             });
+
+            const modal = document.getElementById('detailModal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
         }
 
-        function showError(msg) {
-            document.getElementById('tableHeader').innerHTML = `<th class="p-4 text-red-400"><i class="fa-solid fa-triangle-exclamation mr-2"></i> Lỗi</th>`;
-            document.getElementById('tableBody').innerHTML = `<tr><td class="p-4 text-slate-600 bg-red-50">${msg}</td></tr>`;
+        function closeModal() {
+            const modal = document.getElementById('detailModal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        // Close modal when clicking outside of it
+        window.onclick = function(event) {
+            const modal = document.getElementById('detailModal');
+            if (event.target == modal) {
+                closeModal();
+            }
         }
     </script>
 </body>
