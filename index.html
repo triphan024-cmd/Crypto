@@ -22,32 +22,15 @@
         .chevron-icon { transition: transform 0.3s ease; }
         .expanded-row .chevron-icon { transform: rotate(180deg); }
         
-        /* Mobile Responsive Table Styles */
-        @media (max-width: 767px) {
-            .responsive-table table, .responsive-table thead, .responsive-table tbody, .responsive-table th, .responsive-table td, .responsive-table tr { 
-                display: block; 
-            }
-            .responsive-table thead tr { 
-                position: absolute; top: -9999px; left: -9999px; 
-            }
-            .responsive-table tr { 
-                border: 1px solid #e2e8f0; border-radius: 0.75rem; margin-bottom: 1rem; background: white; overflow: hidden; box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1);
-            }
-            .responsive-table td { 
-                border: none; border-bottom: 1px solid #f1f5f9; position: relative; padding-left: 50% !important; text-align: right !important; min-height: 3.5rem; display: flex; align-items: center; justify-content: flex-end;
-            }
-            .responsive-table td:last-child { border-bottom: 0; }
-            .responsive-table td:before { 
-                position: absolute; top: 50%; left: 1rem; transform: translateY(-50%); width: 45%; white-space: nowrap; text-align: left; font-weight: 600; color: #64748b; font-size: 0.75rem; text-transform: uppercase; content: attr(data-label); 
-            }
-            
-            /* Exceptions for detail rows on mobile */
-            .responsive-table tr.detail-row { 
-                border: 1px dashed #cbd5e1; margin-top: -0.5rem; margin-left: 1rem; margin-right: 1rem; border-radius: 0.5rem; box-shadow: none; background: #f8fafc;
-            }
-            .responsive-table tr.detail-row.hidden-row { display: none !important; }
-            
-            .clickable-row { border-bottom: none !important; }
+        /* Sticky styles for horizontal scrolling on mobile */
+        .sticky-col {
+            position: sticky !important;
+            left: 0;
+            z-index: 10;
+            box-shadow: 2px 0 5px -2px rgba(0,0,0,0.1);
+        }
+        thead .sticky-col {
+            z-index: 20; /* Ensure header stays above rows */
         }
     </style>
 </head>
@@ -56,20 +39,26 @@
         <div class="flex items-center justify-between mb-8">
             <h1 class="text-3xl font-bold flex items-center gap-3">
                 <i class="fa-solid fa-chart-pie text-blue-600"></i>
-                Portfolio Summary
+                <span class="hidden md:inline">Portfolio Summary</span>
+                <span class="md:hidden">Portfolio</span>
             </h1>
-            <div class="text-sm text-slate-500 bg-white px-4 py-2 rounded-full shadow-sm">
-                <i class="fa-solid fa-circle-check text-green-500 mr-1"></i> Live Data Sync
+            <div class="flex items-center gap-3">
+                <button onclick="refreshLivePrices()" class="text-sm bg-blue-50 text-blue-600 hover:bg-blue-100 px-3 py-2 md:px-4 md:py-2 rounded-full shadow-sm font-medium transition-colors border border-blue-200 flex items-center">
+                    <i class="fa-solid fa-arrows-rotate mr-1" id="refreshIcon"></i> <span class="hidden md:inline">Làm mới giá</span><span class="md:hidden">Refresh</span>
+                </button>
+                <div class="text-sm text-slate-500 bg-white px-4 py-2 rounded-full shadow-sm hidden md:block">
+                    <i class="fa-solid fa-circle-check text-green-500 mr-1"></i> Live Data Sync
+                </div>
             </div>
         </div>
         
         <!-- Summary Dashboard -->
-        <div class="bg-white md:rounded-xl shadow-lg border-x border-t md:border-slate-200 border-transparent overflow-hidden mb-8 responsive-table">
+        <div class="bg-white md:rounded-xl shadow-lg border-x border-t md:border-slate-200 border-transparent overflow-hidden mb-8">
             <div class="overflow-x-auto">
                 <table class="w-full text-right border-collapse md:table-fixed" id="summaryTable">
                     <thead>
                         <tr class="bg-slate-800 text-slate-100 uppercase text-xs font-semibold tracking-wider">
-                            <th class="p-4 text-left rounded-tl-lg w-[14%] whitespace-nowrap overflow-hidden text-ellipsis">Asset (Key)</th>
+                            <th class="p-4 text-left rounded-tl-lg w-[14%] whitespace-nowrap overflow-hidden text-ellipsis sticky-col bg-slate-800">Asset (Key)</th>
                             <th class="p-4 text-center w-[8%] whitespace-nowrap overflow-hidden text-ellipsis">Rank</th>
                             <th class="p-4 w-[13%] whitespace-nowrap overflow-hidden text-ellipsis">Investment ($)</th>
                             <th class="p-4 w-[13%] whitespace-nowrap overflow-hidden text-ellipsis">Cash-out ($)</th>
@@ -118,15 +107,13 @@
         let globalData = []; 
         let liveData = {}; // Store price and rank
 
-        async function initDashboard() {
+        async function fetchPrices() {
             try {
-                // Lấy giá Live và Rank từ CoinGecko (vì Binance không có Rank)
                 const ids = Object.values(COINGECKO_MAP).join(',');
                 const url = `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${ids}`;
                 const res = await fetch(url);
                 const tickerData = await res.json();
                 
-                // Map lại vào object theo symbol gốc
                 tickerData.forEach(item => {
                     const symbol = Object.keys(COINGECKO_MAP).find(key => COINGECKO_MAP[key] === item.id);
                     if (symbol) {
@@ -136,11 +123,16 @@
                         };
                     }
                 });
+                return true;
             } catch (err) {
-                console.warn("Không thể tải giá live & rank từ CoinGecko:", err);
+                console.warn("Lỗi tải giá từ CoinGecko:", err);
+                return false;
             }
+        }
 
-            // Parse Google Sheet CSV sau khi có giá & rank
+        async function initDashboard() {
+            await fetchPrices();
+
             Papa.parse(CSV_URL, {
                 download: true,
                 header: true,
@@ -157,6 +149,14 @@
                     document.getElementById('summaryBody').innerHTML = `<tr><td colspan="8" class="p-4 text-center text-red-500">Lỗi khi tải dữ liệu: ${err.message}</td></tr>`;
                 }
             });
+        }
+
+        async function refreshLivePrices() {
+            const icon = document.getElementById('refreshIcon');
+            icon.classList.add('fa-spin'); // spin animation
+            await fetchPrices();
+            processSummary(globalData); // rerender with new prices
+            setTimeout(() => icon.classList.remove('fa-spin'), 500); // stop spin
         }
 
         function formatMoney(amount, forceDecimals = false) {
@@ -288,7 +288,7 @@
                 tr.onclick = () => toggleRow(coinId);
                 
                 tr.innerHTML = `
-                    <td data-label="Asset" class="p-4 text-left font-bold text-blue-600 group-hover:text-blue-800 flex items-center gap-3">
+                    <td data-label="Asset" class="p-4 text-left font-bold text-blue-600 group-hover:text-blue-800 flex items-center gap-3 sticky-col bg-white transition-colors">
                         <i class="fa-solid fa-chevron-down text-slate-400 text-[10px] chevron-icon hidden md:block"></i>
                         ${item.asset}
                     </td>
@@ -310,7 +310,7 @@
                     const headerTr = document.createElement('tr');
                     headerTr.className = `detail-row detail-${coinId} hidden-row bg-slate-200/50 text-slate-500 uppercase text-[10px] font-bold tracking-wider hidden md:table-row`;
                     headerTr.innerHTML = `
-                        <td class="py-2 px-4 text-center border-l-2 border-blue-400">Status</td>
+                        <td class="py-2 px-4 text-center border-l-2 border-blue-400 sticky-col bg-slate-100">Status</td>
                         <td class="py-2 px-4 text-left">Phase</td>
                         <td class="py-2 px-4 text-right">Rationale</td>
                         <td class="py-2 px-4 text-right">Amount</td>
@@ -334,7 +334,7 @@
                     }
 
                     const detailTr = document.createElement('tr');
-                    detailTr.className = `detail-row detail-${coinId} hidden-row transition-opacity hover:bg-slate-100 cursor-pointer`;
+                    detailTr.className = `detail-row detail-${coinId} hidden-row transition-opacity hover:bg-slate-200 cursor-pointer`;
                     detailTr.title = "Click để chuyển đổi trạng thái Pending/Filled";
                     detailTr.onclick = () => {
                         const currentStatus = detail['STATUS'] || '';
@@ -348,7 +348,7 @@
                     };
                     
                     detailTr.innerHTML = `
-                        <td data-label="Status" class="p-4 text-center border-l-2 border-blue-400 truncate">${getStatusBadge(detail['STATUS'])}</td>
+                        <td data-label="Status" class="p-4 text-center border-l-2 border-blue-400 truncate sticky-col bg-slate-50 transition-colors group-hover:bg-slate-200">${getStatusBadge(detail['STATUS'])}</td>
                         <td data-label="Phase" class="p-4 text-left text-slate-600 font-medium text-xs md:text-sm truncate" title="${detail['PHASE'] || ''}">${detail['PHASE'] || '-'}</td>
                         <td data-label="Rationale" class="p-4 text-slate-500 text-xs text-right truncate" title="${detail['PRICING RATIONALE'] || ''}">${detail['PRICING RATIONALE'] || '-'}</td>
                         <td data-label="Amount" class="p-4 font-bold text-right text-slate-800 truncate">${detail['AMOUNT'] || '-'}</td>
@@ -364,7 +364,7 @@
             // --- 3. Tfoot Total ---
             tfoot.innerHTML = `
                 <tr>
-                    <td data-label="Tổng kết" class="p-4 text-left text-lg md:font-bold">TOTAL</td>
+                    <td data-label="Tổng kết" class="p-4 text-left text-lg md:font-bold sticky-col bg-slate-50">TOTAL</td>
                     <td data-label="Rank" class="p-4 text-center hidden md:table-cell">-</td>
                     <td data-label="Investment" class="p-4">${formatMoney(totals.totalInvestment)}</td>
                     <td data-label="Cash-out" class="p-4">${formatMoney(totals.totalCashOut)}</td>
