@@ -27,6 +27,38 @@
         }
         .chevron-icon { transition: transform 0.3s ease; }
         .expanded-row .chevron-icon { transform: rotate(180deg); }
+        
+        /* Mobile Responsive Table Styles */
+        @media (max-width: 767px) {
+            .responsive-table table, .responsive-table thead, .responsive-table tbody, .responsive-table th, .responsive-table td, .responsive-table tr { 
+                display: block; 
+            }
+            .responsive-table thead tr { 
+                position: absolute; top: -9999px; left: -9999px; 
+            }
+            .responsive-table tr { 
+                border: 1px solid #e2e8f0; border-radius: 0.75rem; margin-bottom: 1rem; background: white; overflow: hidden; box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1);
+            }
+            .responsive-table td { 
+                border: none; border-bottom: 1px solid #f1f5f9; position: relative; padding-left: 50% !important; text-align: right !important; min-height: 3.5rem; display: flex; align-items: center; justify-content: flex-end;
+            }
+            .responsive-table td:last-child { border-bottom: 0; }
+            .responsive-table td:before { 
+                position: absolute; top: 50%; left: 1rem; transform: translateY(-50%); width: 45%; white-space: nowrap; text-align: left; font-weight: 600; color: #64748b; font-size: 0.75rem; text-transform: uppercase; content: attr(data-label); 
+            }
+            
+            /* Exceptions for detail row container */
+            .responsive-table tr.detail-row { border: none !important; margin: 0 !important; box-shadow: none !important; border-radius: 0 !important; background: transparent; }
+            .responsive-table .detail-row td { padding: 0 !important; display: block; text-align: left !important; border: none; }
+            .responsive-table .detail-row td:before { display: none; }
+            
+            /* Inner detail table */
+            .detail-content { padding: 0 !important; }
+            .detail-content > div { padding: 0.5rem !important; }
+            .detail-content .responsive-table tr { box-shadow: none; border-radius: 0.5rem; border: 1px solid #e2e8f0; margin-bottom: 0.5rem; }
+            
+            .clickable-row { border-bottom: none !important; }
+        }
     </style>
 </head>
 <body class="bg-slate-50 p-4 md:p-8 min-h-screen text-slate-800">
@@ -42,7 +74,7 @@
         </div>
         
         <!-- Summary Dashboard -->
-        <div class="bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden mb-8">
+        <div class="bg-white md:rounded-xl shadow-lg border-x border-t md:border-slate-200 border-transparent overflow-hidden mb-8 responsive-table">
             <div class="overflow-x-auto">
                 <table class="w-full text-right border-collapse whitespace-nowrap" id="summaryTable">
                     <thead>
@@ -253,17 +285,17 @@
                 tr.onclick = () => toggleRow(coinId);
                 
                 tr.innerHTML = `
-                    <td class="p-4 text-left font-bold text-blue-600 group-hover:text-blue-800 flex items-center gap-3">
-                        <i class="fa-solid fa-chevron-down text-slate-400 text-[10px] chevron-icon"></i>
+                    <td data-label="Asset" class="p-4 text-left font-bold text-blue-600 group-hover:text-blue-800 flex items-center gap-3">
+                        <i class="fa-solid fa-chevron-down text-slate-400 text-[10px] chevron-icon hidden md:block"></i>
                         ${item.asset}
                     </td>
-                    <td class="p-4 text-center text-slate-500 font-mono text-xs">${item.rank !== 9999 ? '#' + item.rank : '-'}</td>
-                    <td class="p-4 text-slate-600">${formatMoney(item.investment)}</td>
-                    <td class="p-4 font-semibold text-green-600">${formatMoney(item.cashOut)}</td>
-                    <td class="p-4 font-semibold text-amber-500">${formatMoney(item.pending)}</td>
-                    <td class="p-4 font-bold text-slate-800">${formatMoney(item.totalRevenue)}</td>
-                    <td class="p-4 font-bold ${item.netProfit >= 0 ? 'text-green-600' : 'text-red-500'}">${formatMoney(item.netProfit)}</td>
-                    <td class="p-4 font-bold ${item.roi >= 0 ? 'text-green-600' : 'text-red-500'}">${(item.roi * 100).toFixed(0)}%</td>
+                    <td data-label="Rank" class="p-4 text-center text-slate-500 font-mono text-xs">${item.rank !== 9999 ? '#' + item.rank : '-'}</td>
+                    <td data-label="Investment" class="p-4 text-slate-600">${formatMoney(item.investment)}</td>
+                    <td data-label="Cash-out" class="p-4 font-semibold text-green-600">${formatMoney(item.cashOut)}</td>
+                    <td data-label="Pending" class="p-4 font-semibold text-amber-500">${formatMoney(item.pending)}</td>
+                    <td data-label="Total Revenue" class="p-4 font-bold text-slate-800">${formatMoney(item.totalRevenue)}</td>
+                    <td data-label="Net Profit" class="p-4 font-bold ${item.netProfit >= 0 ? 'text-green-600' : 'text-red-500'}">${formatMoney(item.netProfit)}</td>
+                    <td data-label="ROI" class="p-4 font-bold ${item.roi >= 0 ? 'text-green-600' : 'text-red-500'}">${(item.roi * 100).toFixed(0)}%</td>
                 `;
                 tbody.appendChild(tr);
 
@@ -271,8 +303,8 @@
                 const currentPrice = liveData[item.asset] ? liveData[item.asset].price : null;
                 
                 let detailHtml = `
-                    <div class="pl-8 pr-4 pb-6 pt-2">
-                        <table class="w-full text-left border-collapse whitespace-nowrap bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
+                    <div class="md:pl-8 md:pr-4 md:pb-6 md:pt-2">
+                        <table class="w-full text-left border-collapse whitespace-nowrap bg-white md:rounded-lg md:shadow-sm md:border md:border-slate-200 overflow-hidden responsive-table">
                             <thead>
                                 <tr class="bg-slate-100/80 text-slate-500 uppercase text-[11px] font-bold tracking-wider">
                                     <th class="py-2.5 px-4 border-b border-slate-200">Status</th>
@@ -302,14 +334,14 @@
 
                     detailHtml += `
                         <tr class="hover:bg-slate-50 transition-colors">
-                            <td class="py-2.5 px-4">${getStatusBadge(detail['STATUS'])}</td>
-                            <td class="py-2.5 px-4 text-slate-600 font-medium">${detail['PHASE'] || '-'}</td>
-                            <td class="py-2.5 px-4 text-slate-500 text-xs">${detail['PRICING RATIONALE'] || '-'}</td>
-                            <td class="py-2.5 px-4 text-right font-medium ${priceColorClass} bg-blue-50/20">${formatMoney(currentPrice, true)}</td>
-                            <td class="py-2.5 px-4 text-right font-medium text-slate-700">${detail['TARGET $'] || '-'}</td>
-                            <td class="py-2.5 px-4 text-right text-slate-500">${detail['QUANTITY'] || '-'}</td>
-                            <td class="py-2.5 px-4 text-right text-slate-500">${detail['RATIO'] || '-'}</td>
-                            <td class="py-2.5 px-4 text-right font-bold text-slate-800">${detail['AMOUNT'] || '-'}</td>
+                            <td data-label="Status" class="py-2.5 px-4">${getStatusBadge(detail['STATUS'])}</td>
+                            <td data-label="Phase" class="py-2.5 px-4 text-slate-600 font-medium">${detail['PHASE'] || '-'}</td>
+                            <td data-label="Rationale" class="py-2.5 px-4 text-slate-500 text-xs">${detail['PRICING RATIONALE'] || '-'}</td>
+                            <td data-label="Live Price" class="py-2.5 px-4 text-right font-medium ${priceColorClass} bg-blue-50/20">${formatMoney(currentPrice, true)}</td>
+                            <td data-label="Target $" class="py-2.5 px-4 text-right font-medium text-slate-700">${detail['TARGET $'] || '-'}</td>
+                            <td data-label="Quantity" class="py-2.5 px-4 text-right text-slate-500">${detail['QUANTITY'] || '-'}</td>
+                            <td data-label="Ratio" class="py-2.5 px-4 text-right text-slate-500">${detail['RATIO'] || '-'}</td>
+                            <td data-label="Amount" class="py-2.5 px-4 text-right font-bold text-slate-800">${detail['AMOUNT'] || '-'}</td>
                         </tr>
                     `;
                 });
@@ -332,14 +364,14 @@
             // --- 3. Tfoot Total ---
             tfoot.innerHTML = `
                 <tr>
-                    <td class="p-4 text-left text-lg">TOTAL</td>
-                    <td class="p-4 text-center">-</td>
-                    <td class="p-4">${formatMoney(totals.totalInvestment)}</td>
-                    <td class="p-4">${formatMoney(totals.totalCashOut)}</td>
-                    <td class="p-4">${formatMoney(totals.totalPending)}</td>
-                    <td class="p-4">${formatMoney(totals.totalRevenueSum)}</td>
-                    <td class="p-4 ${totals.totalNetProfit >= 0 ? 'text-green-600' : 'text-red-500'}">${formatMoney(totals.totalNetProfit)}</td>
-                    <td class="p-4 ${totals.totalROI >= 0 ? 'text-green-600' : 'text-red-500'}">${(totals.totalROI * 100).toFixed(0)}%</td>
+                    <td data-label="Tổng kết" class="p-4 text-left text-lg md:font-bold">TOTAL</td>
+                    <td data-label="Rank" class="p-4 text-center hidden md:table-cell">-</td>
+                    <td data-label="Investment" class="p-4">${formatMoney(totals.totalInvestment)}</td>
+                    <td data-label="Cash-out" class="p-4">${formatMoney(totals.totalCashOut)}</td>
+                    <td data-label="Pending" class="p-4">${formatMoney(totals.totalPending)}</td>
+                    <td data-label="Total Revenue" class="p-4">${formatMoney(totals.totalRevenueSum)}</td>
+                    <td data-label="Net Profit" class="p-4 ${totals.totalNetProfit >= 0 ? 'text-green-600' : 'text-red-500'}">${formatMoney(totals.totalNetProfit)}</td>
+                    <td data-label="ROI" class="p-4 ${totals.totalROI >= 0 ? 'text-green-600' : 'text-red-500'}">${(totals.totalROI * 100).toFixed(0)}%</td>
                 </tr>
             `;
         }
