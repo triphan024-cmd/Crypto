@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crypto Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+</head>
+<body class="bg-gray-100 p-8">
+    <div class="max-w-6xl mx-auto">
+        <h1 class="text-3xl font-bold text-gray-800 mb-6">Crypto Dashboard</h1>
+        
+        <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+            <h2 class="text-xl font-semibold mb-4 text-gray-700">Hướng dẫn kết nối dữ liệu</h2>
+            <p class="mb-2 text-gray-600">File Google Sheet của bạn hiện đang ở chế độ <strong>Private</strong>. Để dashboard này có thể tự động lấy dữ liệu từ sheet "Dashboard", bạn cần làm các bước sau:</p>
+            <ol class="list-decimal pl-5 mb-4 text-gray-600 space-y-1">
+                <li>Mở Google Sheet của bạn.</li>
+                <li>Vào <strong>Tệp (File)</strong> > <strong>Chia sẻ (Share)</strong> > <strong>Công bố lên web (Publish to web)</strong>.</li>
+                <li>Trong hộp thoại hiện ra, ở phần Liên kết, chọn sheet <strong>Dashboard</strong> và định dạng <strong>Giá trị được phân tách bằng dấu phẩy (.csv)</strong>.</li>
+                <li>Nhấn <strong>Công bố (Publish)</strong>.</li>
+                <li>Copy đường link được tạo ra và dán vào biến <code>CSV_URL</code> trong mã nguồn của file <code>index.html</code> này.</li>
+            </ol>
+        </div>
+
+        <div class="bg-white rounded-lg shadow-md overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse" id="dashboardTable">
+                    <thead>
+                        <tr class="bg-gray-50 border-b border-gray-200 text-gray-600" id="tableHeader">
+                            <!-- Headers will be injected here -->
+                            <th class="p-4">Đang tải dữ liệu...</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-200" id="tableBody">
+                        <!-- Data rows will be injected here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- CẤU HÌNH ---
+        // Thay thế link bên dưới bằng link CSV lấy từ "Publish to web" của Google Sheet
+        const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQ.../pub?gid=1009513310&single=true&output=csv'; 
+        
+        // Cố gắng tải dữ liệu (sẽ bị lỗi CORS hoặc 404 nếu URL chưa chính xác)
+        if (CSV_URL.includes("2PACX")) {
+            Papa.parse(CSV_URL, {
+                download: true,
+                header: true,
+                complete: function(results) {
+                    const data = results.data;
+                    if(data && data.length > 0) {
+                        renderTable(data);
+                    } else {
+                        showError("Không có dữ liệu hoặc lỗi parse.");
+                    }
+                },
+                error: function(err) {
+                    showError("Lỗi khi tải dữ liệu: " + err.message + ". Vui lòng kiểm tra lại link CSV đã Publish.");
+                }
+            });
+        }
+
+        function renderTable(data) {
+            const headerRow = document.getElementById('tableHeader');
+            const tbody = document.getElementById('tableBody');
+            
+            headerRow.innerHTML = '';
+            tbody.innerHTML = '';
+
+            if (data.length === 0) return;
+
+            // Render headers
+            const headers = Object.keys(data[0]);
+            headers.forEach(headerText => {
+                const th = document.createElement('th');
+                th.className = 'p-4 font-semibold';
+                th.textContent = headerText;
+                headerRow.appendChild(th);
+            });
+
+            // Render rows
+            data.forEach(row => {
+                // Skip completely empty rows
+                if (Object.values(row).every(val => !val)) return;
+
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-gray-50';
+                
+                headers.forEach(header => {
+                    const td = document.createElement('td');
+                    td.className = 'p-4 text-gray-700';
+                    td.textContent = row[header] || '-';
+                    tr.appendChild(td);
+                });
+                
+                tbody.appendChild(tr);
+            });
+        }
+
+        function showError(msg) {
+            document.getElementById('tableHeader').innerHTML = `<th class="p-4 text-red-500">${msg}</th>`;
+            document.getElementById('tableBody').innerHTML = '';
+        }
+    </script>
+</body>
+</html>
