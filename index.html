@@ -48,6 +48,7 @@
                     <thead>
                         <tr class="bg-slate-800 text-slate-100 uppercase text-xs font-semibold tracking-wider">
                             <th class="p-4 text-left rounded-tl-lg">Asset (Key)</th>
+                            <th class="p-4 text-center">Rank</th>
                             <th class="p-4">Investment ($)</th>
                             <th class="p-4">Cash-out ($)</th>
                             <th class="p-4">Pending ($)</th>
@@ -57,7 +58,7 @@
                         </tr>
                     </thead>
                     <tbody class="text-sm font-medium" id="summaryBody">
-                        <tr><td colspan="7" class="p-4 text-center text-slate-500">Đang tải dữ liệu...</td></tr>
+                        <tr><td colspan="8" class="p-4 text-center text-slate-500">Đang tải dữ liệu...</td></tr>
                     </tbody>
                     <tfoot class="bg-slate-50 font-bold text-slate-900 border-t-2 border-slate-300" id="summaryFooter">
                         <!-- Total row injected here -->
@@ -82,26 +83,42 @@
             'SUI': 1000
         };
 
+        // MAPPING KÝ HIỆU COIN SANG ID COINGECKO
+        const COINGECKO_MAP = {
+            'BTC': 'bitcoin',
+            'ETH': 'ethereum',
+            'ENA': 'ethena',
+            'AVAX': 'avalanche-2',
+            'LINK': 'chainlink',
+            'SUI': 'sui'
+        };
+
         let globalData = []; 
-        let livePrices = {};
+        let liveData = {}; // Store price and rank
 
         async function initDashboard() {
             try {
-                // Lấy giá Live từ Binance
-                const res = await fetch('https://api.binance.com/api/v3/ticker/price');
+                // Lấy giá Live và Rank từ CoinGecko (vì Binance không có Rank)
+                const ids = Object.values(COINGECKO_MAP).join(',');
+                const url = `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${ids}`;
+                const res = await fetch(url);
                 const tickerData = await res.json();
                 
+                // Map lại vào object theo symbol gốc
                 tickerData.forEach(item => {
-                    if (item.symbol.endsWith('USDT')) {
-                        const coin = item.symbol.replace('USDT', '');
-                        livePrices[coin] = parseFloat(item.price);
+                    const symbol = Object.keys(COINGECKO_MAP).find(key => COINGECKO_MAP[key] === item.id);
+                    if (symbol) {
+                        liveData[symbol] = {
+                            price: parseFloat(item.current_price),
+                            rank: item.market_cap_rank
+                        };
                     }
                 });
             } catch (err) {
-                console.warn("Không thể tải giá live từ Binance:", err);
+                console.warn("Không thể tải giá live & rank từ CoinGecko:", err);
             }
 
-            // Parse Google Sheet CSV sau khi có giá
+            // Parse Google Sheet CSV sau khi có giá & rank
             Papa.parse(CSV_URL, {
                 download: true,
                 header: true,
@@ -111,11 +128,11 @@
                         globalData = data.filter(row => Object.values(row).some(val => val && val.trim() !== ''));
                         processSummary(globalData);
                     } else {
-                        document.getElementById('summaryBody').innerHTML = `<tr><td colspan="7" class="p-4 text-center text-red-500">Không có dữ liệu</td></tr>`;
+                        document.getElementById('summaryBody').innerHTML = `<tr><td colspan="8" class="p-4 text-center text-red-500">Không có dữ liệu</td></tr>`;
                     }
                 },
                 error: function(err) {
-                    document.getElementById('summaryBody').innerHTML = `<tr><td colspan="7" class="p-4 text-center text-red-500">Lỗi khi tải dữ liệu: ${err.message}</td></tr>`;
+                    document.getElementById('summaryBody').innerHTML = `<tr><td colspan="8" class="p-4 text-center text-red-500">Lỗi khi tải dữ liệu: ${err.message}</td></tr>`;
                 }
             });
         }
@@ -152,6 +169,7 @@
                 if (!summary[coin]) {
                     summary[coin] = {
                         asset: coin,
+                        rank: liveData[coin] ? liveData[coin].rank : 9999, // default to high rank if not found
                         investment: INVESTMENTS[coin] || 0,
                         cashOut: 0,
                         pending: 0,
@@ -192,6 +210,9 @@
 
                 return item;
             });
+            
+            // SẮP XẾP THEO RANK (Tăng dần)
+            summaryList.sort((a, b) => a.rank - b.rank);
 
             const totalROI = totalInvestment > 0 ? (totalNetProfit / totalInvestment) : 0;
 
@@ -236,6 +257,7 @@
                         <i class="fa-solid fa-chevron-down text-slate-400 text-[10px] chevron-icon"></i>
                         ${item.asset}
                     </td>
+                    <td class="p-4 text-center text-slate-500 font-mono text-xs">${item.rank !== 9999 ? '#' + item.rank : '-'}</td>
                     <td class="p-4 text-slate-600">${formatMoney(item.investment)}</td>
                     <td class="p-4 font-semibold text-green-600">${formatMoney(item.cashOut)}</td>
                     <td class="p-4 font-semibold text-amber-500">${formatMoney(item.pending)}</td>
@@ -246,7 +268,7 @@
                 tbody.appendChild(tr);
 
                 // --- 2. Hàng Detail (Dropdown Row) ---
-                const currentPrice = livePrices[item.asset];
+                const currentPrice = liveData[item.asset] ? liveData[item.asset].price : null;
                 
                 let detailHtml = `
                     <div class="pl-8 pr-4 pb-6 pt-2">
@@ -297,7 +319,7 @@
                 const detailTr = document.createElement('tr');
                 detailTr.className = 'detail-row';
                 detailTr.innerHTML = `
-                    <td colspan="7">
+                    <td colspan="8">
                         <div id="wrapper-${coinId}" class="detail-content">
                             ${detailHtml}
                         </div>
@@ -311,6 +333,7 @@
             tfoot.innerHTML = `
                 <tr>
                     <td class="p-4 text-left text-lg">TOTAL</td>
+                    <td class="p-4 text-center">-</td>
                     <td class="p-4">${formatMoney(totals.totalInvestment)}</td>
                     <td class="p-4">${formatMoney(totals.totalCashOut)}</td>
                     <td class="p-4">${formatMoney(totals.totalPending)}</td>
