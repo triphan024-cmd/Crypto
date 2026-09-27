@@ -310,7 +310,7 @@
                     const headerTr = document.createElement('tr');
                     headerTr.className = `detail-row detail-${coinId} hidden-row bg-slate-200/50 text-slate-500 uppercase text-[10px] font-bold tracking-wider hidden md:table-row`;
                     headerTr.innerHTML = `
-                        <td class="py-2 px-4 text-center md:pl-10 border-l-2 border-blue-400">Status</td>
+                        <td class="py-2 px-4 text-center border-l-2 border-blue-400">Status</td>
                         <td class="py-2 px-4 text-left">Phase</td>
                         <td class="py-2 px-4 text-right">Rationale</td>
                         <td class="py-2 px-4 text-right">Amount</td>
@@ -327,7 +327,8 @@
                     let priceColorClass = 'text-blue-600';
                     if (currentPrice && targetVal > 0) {
                         const diff = (currentPrice - targetVal) / targetVal;
-                        if (diff >= -0.05 && diff <= 0) {
+                        // Nổi bật nếu giá Live >= 95% Target (tiệm cận hoặc đã vượt)
+                        if (diff >= -0.05) {
                             priceColorClass = 'text-green-500 font-bold';
                         }
                     }
@@ -347,7 +348,7 @@
                     };
                     
                     detailTr.innerHTML = `
-                        <td data-label="Status" class="p-4 text-center md:pl-10 border-l-2 border-blue-400 truncate">${getStatusBadge(detail['STATUS'])}</td>
+                        <td data-label="Status" class="p-4 text-center border-l-2 border-blue-400 truncate">${getStatusBadge(detail['STATUS'])}</td>
                         <td data-label="Phase" class="p-4 text-left text-slate-600 font-medium text-xs md:text-sm truncate" title="${detail['PHASE'] || ''}">${detail['PHASE'] || '-'}</td>
                         <td data-label="Rationale" class="p-4 text-slate-500 text-xs text-right truncate" title="${detail['PRICING RATIONALE'] || ''}">${detail['PRICING RATIONALE'] || '-'}</td>
                         <td data-label="Amount" class="p-4 font-bold text-right text-slate-800 truncate">${detail['AMOUNT'] || '-'}</td>
