@@ -35,7 +35,25 @@
     </style>
 </head>
 <body class="bg-slate-50 p-4 md:p-8 min-h-screen text-slate-800">
-    <div class="max-w-7xl mx-auto">
+    
+    <!-- Màn hình Đăng Nhập -->
+    <div id="loginOverlay" class="fixed inset-0 bg-slate-900 flex items-center justify-center z-50">
+        <div class="bg-white p-8 rounded-xl shadow-2xl max-w-sm w-full mx-4">
+            <h2 class="text-2xl font-bold mb-6 text-center text-slate-800">
+                <i class="fa-solid fa-lock text-blue-600 mr-2"></i> Security
+            </h2>
+            <div class="mb-4">
+                <input type="password" id="passInput" class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Nhập mật khẩu..." onkeypress="if(event.key === 'Enter') checkPassword()">
+            </div>
+            <p id="loginError" class="text-red-500 text-sm mb-4 hidden text-center font-medium"><i class="fa-solid fa-circle-exclamation mr-1"></i> Sai mật khẩu!</p>
+            <button onclick="checkPassword()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition-colors">
+                Xác Nhận
+            </button>
+        </div>
+    </div>
+
+    <!-- Nội dung App (Bị ẩn lúc đầu) -->
+    <div id="appContent" class="max-w-7xl mx-auto hidden">
         <div class="flex items-center justify-between mb-8">
             <h1 class="text-3xl font-bold flex items-center gap-3">
                 <i class="fa-solid fa-chart-pie text-blue-600"></i>
@@ -77,22 +95,45 @@
     </div>
 
     <script>
-        const SPREADSHEET_ID = '1wyXOB7wktDBG1BeNn_YEiHL4d63R1lKcAoHxcP2hJF8';
+        // --- SECURITY ---
+        const E_SID = "eRgVPCowBRoEGyoKKF0mADxcMjYqBwAjWABTQWBcAyQNCQAkHAYiAAUlKVY=";
+        const E_GAS = "IBsYFBZIHUIcDBwhHxhKAh1dCgMKQCsAAUsIE1EfABxBO0AtLwMLUQ8XWAgEORUjCxRnKhwYOyM4GTEHGmhUOiAcKwYaJwMBBSs2QlYQQg4DVD9dIzpaBgsaAxEtOHcoAVgoOAJBCihAVAcNPkEtFwkH";
+        const E_INV = "M00uMCZQCFxXX154Q04hMToQV15XXnhfQEYgPHNPVV5aeF9cSEczZCw3TVR5WlxUVV4QISYhJWpVXVVVQgJBTTw7AU1WVVVCAhA=";
         const GID = '0';
-        const CSV_URL = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/export?format=csv&gid=${GID}`; 
         
-        // THAY THẾ LINK WEB APP CỦA GOOGLE APPS SCRIPT VÀO ĐÂY SAU KHI DEPLOY:
-        const GAS_URL = "https://script.google.com/macros/s/AKfycbx7fLVyGnfUGswUkWuUbhZ9UOrcivCfs7FY-8X-bg1MoNU5hCuouHJEEn7Fpm-nM2fjbQ/exec";
+        let SPREADSHEET_ID = '';
+        let GAS_URL = '';
+        let CSV_URL = '';
+        let INVESTMENTS = {};
 
-        // CẤU HÌNH VỐN ĐẦU TƯ CHO TỪNG COIN (Investment)
-        const INVESTMENTS = {
-            'BTC': 18000,
-            'ETH': 18000,
-            'ENA': 14000,
-            'AVAX': 15000,
-            'LINK': 11000,
-            'SUI': 1000
-        };
+        function decrypt(b64, key) {
+            const raw = atob(b64);
+            let res = '';
+            for(let i=0; i<raw.length; i++){
+                res += String.fromCharCode(raw.charCodeAt(i) ^ key.charCodeAt(i % key.length));
+            }
+            return res;
+        }
+
+        function checkPassword() {
+            const pw = document.getElementById('passInput').value;
+            try {
+                SPREADSHEET_ID = decrypt(E_SID, pw);
+                GAS_URL = decrypt(E_GAS, pw);
+                const invStr = decrypt(E_INV, pw);
+                INVESTMENTS = JSON.parse(invStr);
+                
+                // Nếu JSON.parse không báo lỗi nghĩa là parse đúng -> password đúng
+                CSV_URL = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/export?format=csv&gid=${GID}`;
+                
+                document.getElementById('loginOverlay').style.display = 'none';
+                document.getElementById('appContent').style.display = 'block';
+                
+                initDashboard();
+            } catch (err) {
+                document.getElementById('loginError').classList.remove('hidden');
+            }
+        }
 
         // MAPPING KÝ HIỆU COIN SANG ID COINGECKO
         const COINGECKO_MAP = {
@@ -409,8 +450,7 @@
             `;
         }
         
-        // Khởi chạy
-        initDashboard();
+        // Bỏ khởi chạy tự động để chờ màn hình đăng nhập
     </script>
 </body>
 </html>
