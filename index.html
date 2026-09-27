@@ -17,7 +17,7 @@
             border-bottom: 1px solid #f1f5f9;
         }
         .detail-row td { padding-top: 0.75rem !important; padding-bottom: 0.75rem !important; }
-        .detail-row.hidden-row { display: none; }
+        .detail-row.hidden-row { display: none !important; }
         
         .chevron-icon { transition: transform 0.3s ease; }
         .expanded-row .chevron-icon { transform: rotate(180deg); }
@@ -45,7 +45,7 @@
             .responsive-table tr.detail-row { 
                 border: 1px dashed #cbd5e1; margin-top: -0.5rem; margin-left: 1rem; margin-right: 1rem; border-radius: 0.5rem; box-shadow: none; background: #f8fafc;
             }
-            .responsive-table tr.detail-row.hidden-row { display: none; }
+            .responsive-table tr.detail-row.hidden-row { display: none !important; }
             
             .clickable-row { border-bottom: none !important; }
         }
@@ -241,8 +241,19 @@
             renderSummary(summaryList, {
                 totalInvestment, totalCashOut, totalPending, totalRevenueSum, totalNetProfit, totalROI
             });
+            
+            // Phục hồi trạng thái mở của dòng chi tiết
+            if (expandedCoinId) {
+                const mainRow = document.getElementById(`row-${expandedCoinId}`);
+                if (mainRow) {
+                    mainRow.classList.add('expanded-row');
+                    document.querySelectorAll(`.detail-${expandedCoinId}`).forEach(r => r.classList.remove('hidden-row'));
+                }
+            }
         }
 
+        let expandedCoinId = null;
+        
         function toggleRow(coinId) {
             const mainRow = document.getElementById(`row-${coinId}`);
             const detailRows = document.querySelectorAll(`.detail-${coinId}`);
@@ -250,6 +261,7 @@
             if (mainRow.classList.contains('expanded-row')) {
                 mainRow.classList.remove('expanded-row');
                 detailRows.forEach(r => r.classList.add('hidden-row'));
+                if (expandedCoinId === coinId) expandedCoinId = null;
             } else {
                 // Tự động đóng các accordion khác
                 document.querySelectorAll('.expanded-row').forEach(row => row.classList.remove('expanded-row'));
@@ -257,6 +269,7 @@
                 
                 mainRow.classList.add('expanded-row');
                 detailRows.forEach(r => r.classList.remove('hidden-row'));
+                expandedCoinId = coinId;
             }
         }
 
@@ -292,7 +305,24 @@
                 // --- 2. Hàng Detail (Dropdown Rows) ---
                 const currentPrice = liveData[item.asset] ? liveData[item.asset].price : null;
                 
-                item.details.forEach(detail => {
+                // Thêm dòng tiêu đề cho phần chi tiết
+                if (item.details.length > 0) {
+                    const headerTr = document.createElement('tr');
+                    headerTr.className = `detail-row detail-${coinId} hidden-row bg-slate-200/50 text-slate-500 uppercase text-[10px] font-bold tracking-wider hidden md:table-row`;
+                    headerTr.innerHTML = `
+                        <td class="py-2 px-4 text-left md:pl-10 border-l-2 border-blue-400">Phase</td>
+                        <td class="py-2 px-4 text-center">Status</td>
+                        <td class="py-2 px-4 text-right">Rationale</td>
+                        <td class="py-2 px-4 text-right">Live Price</td>
+                        <td class="py-2 px-4 text-right">Target $</td>
+                        <td class="py-2 px-4 text-right">Quantity</td>
+                        <td class="py-2 px-4 text-right">Amount</td>
+                        <td class="py-2 px-4 text-right">Ratio</td>
+                    `;
+                    tbody.appendChild(headerTr);
+                }
+
+                item.details.forEach((detail, idx) => {
                     const targetVal = parseMoney(detail['TARGET $']);
                     let priceColorClass = 'text-blue-600';
                     if (currentPrice && targetVal > 0) {
@@ -303,7 +333,19 @@
                     }
 
                     const detailTr = document.createElement('tr');
-                    detailTr.className = `detail-row detail-${coinId} hidden-row transition-opacity hover:bg-slate-100`;
+                    detailTr.className = `detail-row detail-${coinId} hidden-row transition-opacity hover:bg-slate-100 cursor-pointer`;
+                    detailTr.title = "Click để chuyển đổi trạng thái Pending/Filled";
+                    detailTr.onclick = () => {
+                        const currentStatus = detail['STATUS'] || '';
+                        if (currentStatus.includes('Pending')) {
+                            detail['STATUS'] = currentStatus.replace('Pending', 'Filled');
+                        } else if (currentStatus.includes('Filled')) {
+                            detail['STATUS'] = currentStatus.replace('Filled', 'Pending');
+                        }
+                        // Render lại bảng với data mới
+                        processSummary(globalData);
+                    };
+                    
                     detailTr.innerHTML = `
                         <td data-label="Phase" class="p-4 text-left text-slate-600 font-medium md:pl-10 text-xs md:text-sm border-l-2 border-blue-400">${detail['PHASE'] || '-'}</td>
                         <td data-label="Status" class="p-4 text-center">${getStatusBadge(detail['STATUS'])}</td>
