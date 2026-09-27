@@ -9,12 +9,21 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         .clickable-row { cursor: pointer; transition: background-color 0.2s; }
-        .clickable-row:hover { background-color: #f1f5f9; }
-        /* Modal transition */
-        .modal-enter { opacity: 0; transform: scale(0.95); }
-        .modal-enter-active { opacity: 1; transform: scale(1); transition: opacity 300ms, transform 300ms; }
-        .modal-exit { opacity: 1; transform: scale(1); }
-        .modal-exit-active { opacity: 0; transform: scale(0.95); transition: opacity 300ms, transform 300ms; }
+        .clickable-row:hover { background-color: #f8fafc; }
+        /* Smooth expand transition */
+        .detail-row td { padding: 0 !important; border: none; }
+        .detail-content { 
+            max-height: 0; 
+            overflow: hidden; 
+            transition: max-height 0.4s ease-out, opacity 0.3s ease;
+            opacity: 0;
+        }
+        .expanded .detail-content { 
+            max-height: 1000px; 
+            opacity: 1;
+        }
+        .chevron-icon { transition: transform 0.3s ease; }
+        .expanded-row .chevron-icon { transform: rotate(180deg); }
     </style>
 </head>
 <body class="bg-slate-50 p-4 md:p-8 min-h-screen text-slate-800">
@@ -55,42 +64,6 @@
         </div>
     </div>
 
-    <!-- Modal for Details -->
-    <div id="detailModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-900 bg-opacity-50 backdrop-blur-sm p-4">
-        <div class="bg-white rounded-xl shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col transform transition-all">
-            <div class="flex items-center justify-between p-6 border-b border-slate-100">
-                <h2 class="text-2xl font-bold text-slate-800" id="modalTitle">Chi tiết mức chốt lời</h2>
-                <button onclick="closeModal()" class="text-slate-400 hover:text-red-500 transition-colors">
-                    <i class="fa-solid fa-xmark text-2xl"></i>
-                </button>
-            </div>
-            <div class="p-6 overflow-y-auto">
-                <div class="overflow-x-auto rounded-lg border border-slate-200">
-                    <table class="w-full text-left border-collapse whitespace-nowrap">
-                        <thead>
-                            <tr class="bg-slate-100 text-slate-600 uppercase text-xs font-semibold tracking-wider">
-                                <th class="p-3">ID</th>
-                                <th class="p-3">Status</th>
-                                <th class="p-3">Phase</th>
-                                <th class="p-3">Pricing Rationale</th>
-                                <th class="p-3 text-right">Target $</th>
-                                <th class="p-3 text-right">Quantity</th>
-                                <th class="p-3 text-right">Ratio</th>
-                                <th class="p-3 text-right">Amount</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-slate-100 text-sm" id="detailBody">
-                            <!-- Detail rows injected here -->
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-            <div class="p-4 border-t border-slate-100 bg-slate-50 rounded-b-xl text-right">
-                <button onclick="closeModal()" class="px-6 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-700 transition-colors font-medium">Đóng</button>
-            </div>
-        </div>
-    </div>
-
     <script>
         const SPREADSHEET_ID = '1wyXOB7wktDBG1BeNn_YEiHL4d63R1lKcAoHxcP2hJF8';
         const GID = '0';
@@ -106,16 +79,14 @@
             'SUI': 1000
         };
 
-        let globalData = []; // Store raw data
+        let globalData = []; 
 
-        // Tải và Parse dữ liệu
         Papa.parse(CSV_URL, {
             download: true,
             header: true,
             complete: function(results) {
                 const data = results.data;
                 if(data && data.length > 0) {
-                    // Filter out empty rows
                     globalData = data.filter(row => Object.values(row).some(val => val && val.trim() !== ''));
                     processSummary(globalData);
                 } else {
@@ -127,21 +98,28 @@
             }
         });
 
-        // Hàm format tiền tệ
         function formatMoney(amount) {
             return '$' + amount.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
         }
 
-        // Hàm parse string tiền tệ ($1,000) thành số (1000)
         function parseMoney(str) {
             if (!str) return 0;
             return parseFloat(str.replace(/[\$\,]/g, '')) || 0;
         }
 
+        function getStatusBadge(statusText) {
+            if (!statusText) return '-';
+            if (statusText.includes('Filled')) {
+                return `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800 border border-green-200">${statusText}</span>`;
+            } else if (statusText.includes('Pending')) {
+                return `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800 border border-amber-200">${statusText}</span>`;
+            }
+            return `<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-800">${statusText}</span>`;
+        }
+
         function processSummary(data) {
             const summary = {};
 
-            // Khởi tạo và gom nhóm dữ liệu theo COIN
             data.forEach(row => {
                 const coin = row['COIN'] ? row['COIN'].trim() : null;
                 if (!coin) return;
@@ -168,7 +146,6 @@
                 }
             });
 
-            // Tính toán Revenue, Profit, ROI
             let totalInvestment = 0;
             let totalCashOut = 0;
             let totalPending = 0;
@@ -196,18 +173,42 @@
             });
         }
 
+        function toggleRow(coinId) {
+            const mainRow = document.getElementById(`row-${coinId}`);
+            const detailWrapper = document.getElementById(`wrapper-${coinId}`);
+            
+            if (mainRow.classList.contains('expanded-row')) {
+                mainRow.classList.remove('expanded-row');
+                detailWrapper.classList.remove('expanded');
+            } else {
+                // Optional: collapse other rows (uncomment below lines if you want accordion behavior)
+                // document.querySelectorAll('.expanded-row').forEach(row => row.classList.remove('expanded-row'));
+                // document.querySelectorAll('.detail-content').forEach(wrapper => wrapper.classList.remove('expanded'));
+                
+                mainRow.classList.add('expanded-row');
+                detailWrapper.classList.add('expanded');
+            }
+        }
+
         function renderSummary(summaryList, totals) {
             const tbody = document.getElementById('summaryBody');
             const tfoot = document.getElementById('summaryFooter');
             tbody.innerHTML = '';
 
-            summaryList.forEach(item => {
+            summaryList.forEach((item, index) => {
+                const coinId = item.asset.replace(/\s+/g, '-');
+                
+                // --- 1. Hàng Summary (Main Row) ---
                 const tr = document.createElement('tr');
                 tr.className = 'clickable-row group';
-                tr.onclick = () => openModal(item.asset, item.details);
+                tr.id = `row-${coinId}`;
+                tr.onclick = () => toggleRow(coinId);
                 
                 tr.innerHTML = `
-                    <td class="p-4 text-left font-bold text-blue-600 group-hover:text-blue-800">${item.asset}</td>
+                    <td class="p-4 text-left font-bold text-blue-600 group-hover:text-blue-800 flex items-center gap-2">
+                        <i class="fa-solid fa-chevron-down text-slate-400 text-xs chevron-icon"></i>
+                        ${item.asset}
+                    </td>
                     <td class="p-4 text-slate-600">${formatMoney(item.investment)}</td>
                     <td class="p-4 text-green-600">${formatMoney(item.cashOut)}</td>
                     <td class="p-4 text-amber-600">${formatMoney(item.pending)}</td>
@@ -216,8 +217,58 @@
                     <td class="p-4 ${item.roi >= 0 ? 'text-green-600' : 'text-red-500'}">${(item.roi * 100).toFixed(0)}%</td>
                 `;
                 tbody.appendChild(tr);
+
+                // --- 2. Hàng Detail (Dropdown Row) ---
+                let detailHtml = `
+                    <table class="w-full text-left border-collapse whitespace-nowrap bg-white">
+                        <thead>
+                            <tr class="bg-slate-100 text-slate-600 uppercase text-xs font-semibold">
+                                <th class="py-2 px-4 border-b border-slate-200">ID</th>
+                                <th class="py-2 px-4 border-b border-slate-200">Status</th>
+                                <th class="py-2 px-4 border-b border-slate-200">Phase</th>
+                                <th class="py-2 px-4 border-b border-slate-200">Rationale</th>
+                                <th class="py-2 px-4 border-b border-slate-200 text-right">Target $</th>
+                                <th class="py-2 px-4 border-b border-slate-200 text-right">Quantity</th>
+                                <th class="py-2 px-4 border-b border-slate-200 text-right">Ratio</th>
+                                <th class="py-2 px-4 border-b border-slate-200 text-right text-blue-600">Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody class="text-sm">
+                `;
+                
+                item.details.forEach(detail => {
+                    detailHtml += `
+                        <tr class="hover:bg-slate-50 border-b border-slate-50 last:border-0">
+                            <td class="py-2 px-4 text-slate-400 font-mono text-xs">${detail['ID'] || '-'}</td>
+                            <td class="py-2 px-4">${getStatusBadge(detail['STATUS'])}</td>
+                            <td class="py-2 px-4 text-slate-700">${detail['PHASE'] || '-'}</td>
+                            <td class="py-2 px-4 text-slate-600 text-xs">${detail['PRICING RATIONALE'] || '-'}</td>
+                            <td class="py-2 px-4 text-right font-medium text-slate-800">${detail['TARGET $'] || '-'}</td>
+                            <td class="py-2 px-4 text-right text-slate-500">${detail['QUANTITY'] || '-'}</td>
+                            <td class="py-2 px-4 text-right text-slate-500">${detail['RATIO'] || '-'}</td>
+                            <td class="py-2 px-4 text-right font-bold text-slate-800">${detail['AMOUNT'] || '-'}</td>
+                        </tr>
+                    `;
+                });
+                
+                detailHtml += `</tbody></table>`;
+
+                const detailTr = document.createElement('tr');
+                detailTr.className = 'detail-row bg-slate-100/50';
+                detailTr.innerHTML = `
+                    <td colspan="7">
+                        <div id="wrapper-${coinId}" class="detail-content px-4">
+                            <div class="py-4 pl-6 border-l-2 border-blue-400 ml-4 mb-2">
+                                ${detailHtml}
+                            </div>
+                        </div>
+                    </td>
+                `;
+                
+                tbody.appendChild(detailTr);
             });
 
+            // --- 3. Tfoot Total ---
             tfoot.innerHTML = `
                 <tr>
                     <td class="p-4 text-left text-lg">TOTAL</td>
@@ -229,60 +280,6 @@
                     <td class="p-4 ${totals.totalROI >= 0 ? 'text-green-600' : 'text-red-500'}">${(totals.totalROI * 100).toFixed(0)}%</td>
                 </tr>
             `;
-        }
-
-        // --- Logic Hiển thị Chi Tiết ---
-        
-        function getStatusBadge(statusText) {
-            if (!statusText) return '-';
-            if (statusText.includes('Filled')) {
-                return `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">${statusText}</span>`;
-            } else if (statusText.includes('Pending')) {
-                return `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800">${statusText}</span>`;
-            }
-            return `<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-800">${statusText}</span>`;
-        }
-
-        function openModal(coin, details) {
-            document.getElementById('modalTitle').innerHTML = `Chi tiết các mức chốt lời: <span class="text-blue-600">${coin}</span>`;
-            
-            const detailBody = document.getElementById('detailBody');
-            detailBody.innerHTML = '';
-
-            details.forEach(row => {
-                const tr = document.createElement('tr');
-                tr.className = 'hover:bg-slate-50';
-                
-                tr.innerHTML = `
-                    <td class="p-3 text-slate-500 font-mono text-xs">${row['ID'] || '-'}</td>
-                    <td class="p-3">${getStatusBadge(row['STATUS'])}</td>
-                    <td class="p-3 text-slate-700">${row['PHASE'] || '-'}</td>
-                    <td class="p-3 text-slate-700 text-xs">${row['PRICING RATIONALE'] || '-'}</td>
-                    <td class="p-3 text-right font-medium text-slate-800">${row['TARGET $'] || '-'}</td>
-                    <td class="p-3 text-right text-slate-600">${row['QUANTITY'] || '-'}</td>
-                    <td class="p-3 text-right text-slate-600">${row['RATIO'] || '-'}</td>
-                    <td class="p-3 text-right font-bold text-slate-800">${row['AMOUNT'] || '-'}</td>
-                `;
-                detailBody.appendChild(tr);
-            });
-
-            const modal = document.getElementById('detailModal');
-            modal.classList.remove('hidden');
-            modal.classList.add('flex');
-        }
-
-        function closeModal() {
-            const modal = document.getElementById('detailModal');
-            modal.classList.add('hidden');
-            modal.classList.remove('flex');
-        }
-
-        // Close modal when clicking outside of it
-        window.onclick = function(event) {
-            const modal = document.getElementById('detailModal');
-            if (event.target == modal) {
-                closeModal();
-            }
         }
     </script>
 </body>
