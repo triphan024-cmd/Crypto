@@ -344,9 +344,9 @@
                         let newStatus = currentStatus;
                         
                         if (currentStatus.includes('Pending')) {
-                            newStatus = currentStatus.replace('Pending', 'Filled');
+                            newStatus = '✅ Filled';
                         } else if (currentStatus.includes('Filled')) {
-                            newStatus = currentStatus.replace('Filled', 'Pending');
+                            newStatus = '⏳ Pending';
                         }
                         
                         // Update local data for immediate UI response
